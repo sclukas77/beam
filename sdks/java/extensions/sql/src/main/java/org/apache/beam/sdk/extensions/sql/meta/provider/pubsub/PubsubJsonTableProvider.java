@@ -38,6 +38,7 @@ import org.apache.beam.sdk.extensions.sql.meta.provider.InvalidTableException;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.schemas.Schema;
+import org.codehaus.jackson.map.deser.BasicDeserializerFactory;
 
 /**
  * {@link TableProvider} for {@link PubsubIOJsonTable} which wraps {@link PubsubIO} for consumption
@@ -47,6 +48,8 @@ import org.apache.beam.sdk.schemas.Schema;
 @Experimental
 @AutoService(TableProvider.class)
 public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
+  String timeStampField = TIMESTAMP_FIELD;
+  String attributesField = ATTRIBUTES_FIELD;
 
   @Override
   public String getTableType() {
@@ -59,6 +62,21 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     String timestampAttributeKey = tableProperties.getString("timestampAttributeKey");
     String deadLetterQueue = tableProperties.getString("deadLetterQueue");
     validateDlq(deadLetterQueue);
+    System.out.println("building!!");
+
+    if (tableProperties.containsKey("columnMappings")) {
+      JSONObject mappings = tableProperties.getJSONObject("columnMappings");
+      for (String key : mappings.keySet()) {
+        String mappedColumn = mappings.getString(key);
+        if (mappedColumn.contains("pubsub:event_timestamp")) {
+          timeStampField = key;
+          //timestampAttributeKey = key;
+        }
+      }
+    }
+    else {
+      System.out.println("notnot");
+    }
 
     Schema schema = tableDefintion.getSchema();
     validateEventTimestamp(schema);
@@ -70,13 +88,16 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .setDeadLetterQueue(deadLetterQueue)
             .setTopic(tableDefintion.getLocation())
             .setUseFlatSchema(!definesAttributeAndPayload(schema))
+            .setTimeStampField(timeStampField)
             .build();
+
+    System.out.println("CONFIG TIMESTAMP VAL IS" + config.getTimeStampField());
 
     return PubsubIOJsonTable.withConfiguration(config);
   }
 
   private void validateEventTimestamp(Schema schema) {
-    if (!fieldPresent(schema, TIMESTAMP_FIELD, TIMESTAMP)) {
+    if (!fieldPresent(schema, timeStampField, TIMESTAMP)) {
       throw new InvalidTableException(
           "Unsupported schema specified for Pubsub source in CREATE TABLE."
               + "CREATE TABLE for Pubsub topic must include at least 'event_timestamp' field of "
@@ -86,7 +107,7 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
 
   private boolean definesAttributeAndPayload(Schema schema) {
     return fieldPresent(
-            schema, ATTRIBUTES_FIELD, Schema.FieldType.map(VARCHAR.withNullable(false), VARCHAR))
+            schema, attributesField, Schema.FieldType.map(VARCHAR.withNullable(false), VARCHAR))
         && (schema.hasField(PAYLOAD_FIELD)
             && ROW.equals(schema.getField(PAYLOAD_FIELD).getType().getTypeName()));
   }
@@ -139,6 +160,9 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     @Nullable
     abstract String getDeadLetterQueue();
 
+    @Nullable
+    abstract String getTimeStampField();
+
     /**
      * Pubsub topic name.
      *
@@ -171,6 +195,8 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
       abstract Builder setDeadLetterQueue(String deadLetterQueue);
 
       abstract Builder setTopic(String topic);
+
+      abstract Builder setTimeStampField(String timeStampField);
 
       abstract PubsubIOTableConfiguration build();
     }

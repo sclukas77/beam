@@ -406,8 +406,52 @@ public class PubsubJsonIT implements Serializable {
   @Test
   public void testSQLInsertJsonRowsToPubsubFlat() throws Exception {
     String createTableString =
+            "CREATE EXTERNAL TABLE message (\n"
+                    + "event_timestamp TIMESTAMP, \n"
+                    + "name VARCHAR, \n"
+                    + "height INTEGER, \n"
+                    + "knowsJavascript BOOLEAN \n"
+                    + ") \n"
+                    + "TYPE 'pubsub' \n"
+                    + "LOCATION '"
+                    + eventsTopic.topicPath()
+                    + "' \n"
+                    + "TBLPROPERTIES "
+                    + "    '{ "
+                    + "       \"deadLetterQueue\" : \""
+                    + dlqTopic.topicPath()
+                    + "\""
+                    + "     }'";
+
+    // Initialize SQL environment and create the pubsub table
+    BeamSqlEnv sqlEnv = BeamSqlEnv.inMemory(new PubsubJsonTableProvider());
+    sqlEnv.executeDdl(createTableString);
+
+    // TODO(BEAM-8741): Ideally we could write this query without specifying a column list, because
+    //   it shouldn't be possible to write to event_timestamp when it's mapped to  publish time.
+    String queryString =
+            "INSERT INTO message (name, height, knowsJavascript) \n"
+                    + "VALUES \n"
+                    + "('person1', 80, TRUE), \n"
+                    + "('person2', 70, FALSE)";
+
+    // Apply the PTransform to insert the rows
+    //PCollection<Row> queryOutput = query(sqlEnv, pipeline, queryString);
+
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(5));
+
+    eventsTopic
+            .assertThatTopicEventuallyReceives(
+                    jsonMessageLike("{\"name\":\"person1\", \"height\": 80, \"knowsJavascript\": true}"),
+                    jsonMessageLike("{\"name\":\"person2\", \"height\": 70, \"knowsJavascript\": false}"))
+            .waitForUpTo(Duration.standardSeconds(20));
+  }
+
+  @Test
+  public void testSQLInsertJsonRowsToPubsubFlatNewForm() throws Exception {
+    String createTableString =
         "CREATE EXTERNAL TABLE message (\n"
-            + "event_timestamp TIMESTAMP, \n"
+            + "my_timestamp TIMESTAMP, \n"
             + "name VARCHAR, \n"
             + "height INTEGER, \n"
             + "knowsJavascript BOOLEAN \n"
@@ -418,14 +462,22 @@ public class PubsubJsonIT implements Serializable {
             + "' \n"
             + "TBLPROPERTIES "
             + "    '{ "
-            + "       \"deadLetterQueue\" : \""
+            /*+ "       \"deadLetterQueue\" : \""
             + dlqTopic.topicPath()
-            + "\""
+            + "\""*/
+            + "   \""
+            +    "columnMappings"
+            +"\": {"
+            +   "my_timestamp: \"pubsub:event_timestamp\""
+            +"}"
             + "     }'";
 
+    System.out.println("table before");
     // Initialize SQL environment and create the pubsub table
     BeamSqlEnv sqlEnv = BeamSqlEnv.inMemory(new PubsubJsonTableProvider());
+    System.out.println("table 2");
     sqlEnv.executeDdl(createTableString);
+    System.out.println("table 3");
 
     // TODO(BEAM-8741): Ideally we could write this query without specifying a column list, because
     //   it shouldn't be possible to write to event_timestamp when it's mapped to  publish time.
@@ -435,10 +487,13 @@ public class PubsubJsonIT implements Serializable {
             + "('person1', 80, TRUE), \n"
             + "('person2', 70, FALSE)";
 
+    System.out.println("going to query");
     // Apply the PTransform to insert the rows
     PCollection<Row> queryOutput = query(sqlEnv, pipeline, queryString);
+    System.out.println("done querying");
 
     pipeline.run().waitUntilFinish(Duration.standardMinutes(5));
+    System.out.println("ran pipeline");
 
     eventsTopic
         .assertThatTopicEventuallyReceives(
@@ -446,6 +501,78 @@ public class PubsubJsonIT implements Serializable {
             jsonMessageLike("{\"name\":\"person2\", \"height\": 70, \"knowsJavascript\": false}"))
         .waitForUpTo(Duration.standardSeconds(20));
   }
+
+  /*@Test
+  public void testSQLInsertJsonRowsToPubsubFlatNewForm() throws Exception {
+    String createTableString =
+            "CREATE EXTERNAL TABLE message (\n"
+                    + "event_timestamp TIMESTAMP, \n"
+                    + "name VARCHAR, \n"
+                    + "height INTEGER, \n"
+                    + "knowsJavascript BOOLEAN \n"
+                    + ") \n"
+                    + "TYPE 'pubsub' \n"
+                    + "LOCATION '"
+                    + eventsTopic.topicPath()
+                    + "' \n"
+                    + "TBLPROPERTIES "
+                    + "    '{ "
+                    + "       \"deadLetterQueue\" : \""
+                    + dlqTopic.topicPath()
+                    + "\""
+                    + "     }'";
+
+    // Initialize SQL environment and create the pubsub table
+    BeamSqlEnv sqlEnv = BeamSqlEnv.inMemory(new PubsubJsonTableProvider());
+    sqlEnv.executeDdl(createTableString);
+
+    // TODO(BEAM-8741): Ideally we could write this query without specifying a column list, because
+    //   it shouldn't be possible to write to event_timestamp when it's mapped to  publish time.
+    String queryString =
+            "INSERT INTO message (name, height, knowsJavascript) \n"
+                    + "VALUES \n"
+                    + "('person1', 80, TRUE), \n"
+                    + "('person2', 70, FALSE)";
+
+    // Apply the PTransform to insert the rows
+    PCollection<Row> queryOutput = query(sqlEnv, pipeline, queryString);
+
+    String createTableString2 =
+            "CREATE EXTERNAL TABLE older (\n"
+                    + "event_timestamp TIMESTAMP, \n"
+                    + "name VARCHAR, \n"
+                    + "height INTEGER, \n"
+                    + "knowsJavascript BOOLEAN \n"
+                    + ") \n"
+                    + "TYPE 'pubsub' \n"
+                    + "LOCATION '"
+                    + eventsTopic.topicPath()
+                    + "' \n"
+                    + "TBLPROPERTIES "
+                    + "    '{ "
+                    + "       \"deadLetterQueue\" : \""
+                    + dlqTopic.topicPath()
+                    + "\""
+                    + "     }'";
+    sqlEnv.executeDdl(createTableString2);
+
+    String queryString2 =
+            "INSERT INTO older (name, height, knowsJavascript) (\n" +
+                    "SELECT \n" +
+                    "name \n" +
+                    "FROM message \n" +
+                    "WHERE height >= 71)";
+    PCollection<Row> queryOutput2 = query(sqlEnv, pipeline, queryString2);
+
+
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(5));
+
+    eventsTopic
+            .assertThatTopicEventuallyReceives(
+                    jsonMessageLike("{\"name\":\"person1\", \"height\": 80, \"knowsJavascript\": true}"),
+                    jsonMessageLike("{\"name\":\"person2\", \"height\": 70, \"knowsJavascript\": false}"))
+            .waitForUpTo(Duration.standardSeconds(20));
+  } */
 
   @Test
   public void testSQLInsertJsonRowsToPubsubWithTimestampAttributeFlat() throws Exception {
@@ -488,6 +615,56 @@ public class PubsubJsonIT implements Serializable {
             jsonMessageLike(
                 ts(2), "{\"name\":\"person2\", \"height\": 70, \"knowsJavascript\": false}"))
         .waitForUpTo(Duration.standardSeconds(20));
+  }
+
+  @Test
+  public void testSQLInsertJsonRowsToPubsubWithTimestampAttributeFlatNewForm() throws Exception {
+    String createTableString =
+            "CREATE EXTERNAL TABLE message (\n"
+                    + "  my_timestamp TIMESTAMP, \n"
+                    + "  name VARCHAR, \n"
+                    + "  height INTEGER, \n"
+                    + "  knowsJavascript BOOLEAN \n"
+                    + ") \n"
+                    + "TYPE 'pubsub' \n"
+                    + "LOCATION '"
+                    + eventsTopic.topicPath()
+                    + "' \n"
+                    + "TBLPROPERTIES "
+                    + "  '{ "
+                    /*+ "     \"deadLetterQueue\" : \""
+                    + dlqTopic.topicPath()
+                    + "\","
+                    + "     \"timestampAttributeKey\" : \"ts\"" */
+                    + "   \"" +
+                    "columnMappings" +
+                    "\": {"
+                    + "my_timestamp: \"pubsub:event_timestamp\""
+                    +"}"
+                    + "   }'";
+
+    // Initialize SQL environment and create the pubsub table
+    BeamSqlEnv sqlEnv = BeamSqlEnv.inMemory(new PubsubJsonTableProvider());
+    sqlEnv.executeDdl(createTableString);
+
+    String queryString =
+            "INSERT INTO message "
+                    + "VALUES "
+                    + "(TIMESTAMP '1970-01-01 00:00:00.001', 'person1', 80, TRUE), "
+                    + "(TIMESTAMP '1970-01-01 00:00:00.002', 'person2', 70, FALSE)";
+    System.out.println("about to query query");
+    PCollection<Row> queryOutput = query(sqlEnv, pipeline, queryString);
+    System.out.println("runningrunning");
+    pipeline.run().waitUntilFinish(Duration.standardMinutes(5));
+    System.out.println("donedone");
+
+    eventsTopic
+            .assertThatTopicEventuallyReceives(
+                    jsonMessageLike(
+                            ts(1), "{\"name\":\"person1\", \"height\": 80, \"knowsJavascript\": true}"),
+                    jsonMessageLike(
+                            ts(2), "{\"name\":\"person2\", \"height\": 70, \"knowsJavascript\": false}"))
+            .waitForUpTo(Duration.standardSeconds(20));
   }
 
   @Test

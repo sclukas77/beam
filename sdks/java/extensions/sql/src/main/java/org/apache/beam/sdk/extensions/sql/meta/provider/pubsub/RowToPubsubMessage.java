@@ -44,12 +44,23 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Immutabl
 @Experimental
 public class RowToPubsubMessage extends PTransform<PCollection<Row>, PCollection<PubsubMessage>> {
   private final PubsubJsonTableProvider.PubsubIOTableConfiguration config;
+  private final String timestampAttributekey;
 
   private RowToPubsubMessage(PubsubJsonTableProvider.PubsubIOTableConfiguration config) {
     checkArgument(
         config.getUseFlatSchema(), "RowToPubsubMessage is only supported for flattened schemas.");
 
     this.config = config;
+    this.timestampAttributekey = this.config.getTimeStampField();
+    /*System.out.println("rowtopubsub");
+    if (config.useTimestampAttribute()) {
+      this.timestampAttributekey = config.getTimestampAttribute();
+    }
+    else {
+      this.timestampAttributekey = "event_timestamp";
+    }*/
+    System.out.println("timestamp is " + this.timestampAttributekey);
+
   }
 
   public static RowToPubsubMessage fromTableConfig(
@@ -59,14 +70,16 @@ public class RowToPubsubMessage extends PTransform<PCollection<Row>, PCollection
 
   @Override
   public PCollection<PubsubMessage> expand(PCollection<Row> input) {
+    System.out.println("expanding");
+    System.out.println("attribute key is " + this.timestampAttributekey);
     PCollection<Row> withTimestamp =
         (config.useTimestampAttribute())
             ? input.apply(
-                WithTimestamps.of((row) -> row.getDateTime("event_timestamp").toInstant()))
+                WithTimestamps.of((row) -> row.getDateTime(this.timestampAttributekey).toInstant()))
             : input;
 
     return withTimestamp
-        .apply(DropFields.fields("event_timestamp"))
+        .apply(DropFields.fields(this.timestampAttributekey))
         .apply(ToJson.of())
         .apply(
             MapElements.into(TypeDescriptor.of(PubsubMessage.class))
