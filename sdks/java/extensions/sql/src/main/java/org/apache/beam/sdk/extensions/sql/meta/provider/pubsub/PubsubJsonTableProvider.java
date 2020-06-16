@@ -38,6 +38,9 @@ import org.apache.beam.sdk.extensions.sql.meta.provider.InvalidTableException;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaCapableIOProvider;
+import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
+import org.apache.beam.sdk.values.Row;
 
 /**
  * {@link TableProvider} for {@link PubsubIOJsonTable} which wraps {@link PubsubIO} for consumption
@@ -54,13 +57,30 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
   }
 
   @Override
-  public BeamSqlTable buildBeamSqlTable(Table tableDefintion) {
-    JSONObject tableProperties = tableDefintion.getProperties();
+  public BeamSqlTable buildBeamSqlTable(Table tableDefinition) {
+    JSONObject tableProperties = tableDefinition.getProperties();
     String timestampAttributeKey = tableProperties.getString("timestampAttributeKey");
     String deadLetterQueue = tableProperties.getString("deadLetterQueue");
     validateDlq(deadLetterQueue);
 
-    Schema schema = tableDefintion.getSchema();
+    System.out.println("tableProperities is " + tableProperties);
+
+    PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
+    Schema configurationSchema = ioProvider.configurationSchema();
+    Row configurationRow = Row.withSchema(configurationSchema)
+            .withFieldValue("timestampAttributeKey", timestampAttributeKey)
+            .withFieldValue("deadLetterQueue", deadLetterQueue)
+            .build();
+
+    String location = tableDefinition.getLocation();
+    Schema dataSchema = tableDefinition.getSchema();
+
+    PubsubSchemaIO  pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
+
+
+
+    Schema schema = tableDefinition.getSchema();
+    System.out.println("Schema is " + schema);
     validateEventTimestamp(schema);
 
     PubsubIOTableConfiguration config =
@@ -68,10 +88,11 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .setSchema(schema)
             .setTimestampAttribute(timestampAttributeKey)
             .setDeadLetterQueue(deadLetterQueue)
-            .setTopic(tableDefintion.getLocation())
+            .setTopic(tableDefinition.getLocation())
             .setUseFlatSchema(!definesAttributeAndPayload(schema))
             .build();
 
+    System.out.println("location is " + tableDefinition.getLocation());
     return PubsubIOJsonTable.withConfiguration(config);
   }
 
@@ -119,8 +140,7 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     /**
      * Optional attribute key of the Pubsub message from which to extract the event timestamp.
      *
-     * <p>This attribute has to conform to the same requirements as in {@link
-     * PubsubIO.Read.Builder#withTimestampAttribute}.
+     * <p>This attribute has to conform to the same requirements as in
      *
      * <p>Short version: it has to be either millis since epoch or string in RFC 3339 format.
      *
