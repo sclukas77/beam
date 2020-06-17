@@ -4,6 +4,7 @@ import com.google.auto.service.AutoService;
 import com.google.auto.value.AutoValue;
 import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.io.SchemaCapableIOProvider;
 import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.values.Row;
@@ -27,10 +28,11 @@ public class PubsubSchemaCapableIOProvider {
      * is distinct from the schema of the data source itself.
      */
     //will be constant
+    //need to make these values nullable
     public Schema configurationSchema() {
         return Schema.builder()
-                .addStringField("deadLetterQueue")
-                .addStringField("timestampAttributeKey")
+                .addNullableField("deadLetterQueue", FieldType.STRING)
+                .addNullableField("timestampAttributeKey",FieldType.STRING)
                 .build();
     }
 
@@ -39,10 +41,11 @@ public class PubsubSchemaCapableIOProvider {
      * location, the schema of the data that resides there, and some
      * IO-specific configuration object.*/
 
+    //needs to initialize a SchemaIO object
     public PubsubSchemaIO from(String location,
                   Row configuration,
                   Schema dataSchema) {
-        return new PubsubSchemaIO();
+        return PubsubSchemaIO.withConfiguration(configuration, dataSchema);
     }
 
 }

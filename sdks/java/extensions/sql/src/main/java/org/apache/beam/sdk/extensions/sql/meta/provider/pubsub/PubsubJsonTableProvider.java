@@ -63,20 +63,23 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     String deadLetterQueue = tableProperties.getString("deadLetterQueue");
     validateDlq(deadLetterQueue);
 
-    System.out.println("tableProperities is " + tableProperties);
+    System.out.println("tableProperties is " + tableProperties);
 
     PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
     Schema configurationSchema = ioProvider.configurationSchema();
+    System.out.println("Here");
+
     Row configurationRow = Row.withSchema(configurationSchema)
             .withFieldValue("timestampAttributeKey", timestampAttributeKey)
-            .withFieldValue("deadLetterQueue", deadLetterQueue)
+              .withFieldValue("deadLetterQueue", deadLetterQueue)
             .build();
+
+    System.out.println("here2");
 
     String location = tableDefinition.getLocation();
     Schema dataSchema = tableDefinition.getSchema();
 
     PubsubSchemaIO  pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
-
 
 
     Schema schema = tableDefinition.getSchema();
@@ -90,6 +93,7 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .setDeadLetterQueue(deadLetterQueue)
             .setTopic(tableDefinition.getLocation())
             .setUseFlatSchema(!definesAttributeAndPayload(schema))
+            .setPubsubSchemaIO(pubsubSchemaIO)
             .build();
 
     System.out.println("location is " + tableDefinition.getLocation());
@@ -176,6 +180,8 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
      */
     public abstract Schema getSchema();
 
+    public abstract PubsubSchemaIO getPubsubSchemaIO();
+
     static Builder builder() {
       return new AutoValue_PubsubJsonTableProvider_PubsubIOTableConfiguration.Builder();
     }
@@ -191,6 +197,8 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
       abstract Builder setDeadLetterQueue(String deadLetterQueue);
 
       abstract Builder setTopic(String topic);
+
+      abstract Builder setPubsubSchemaIO(PubsubSchemaIO pubsubSchemaIO);
 
       abstract PubsubIOTableConfiguration build();
     }
