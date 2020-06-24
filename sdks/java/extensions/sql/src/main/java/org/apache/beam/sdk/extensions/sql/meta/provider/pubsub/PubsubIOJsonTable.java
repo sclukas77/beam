@@ -146,12 +146,11 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
-    //to finish
-   /* PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
+    PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PBegin, PCollection<Row>> readerTransform = pubsubSchemaIO.buildReader();
-    return readerTransform.expand(begin); */
+    return readerTransform.expand(begin);
 
-    PCollectionTuple rowsWithDlq =
+   /* PCollectionTuple rowsWithDlq =
         begin
             .apply("ReadFromPubsub", readMessagesWithAttributes())
             .apply(
@@ -167,7 +166,7 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
       rowsWithDlq.get(DLQ_TAG).apply(writeMessagesToDlq());
     }
 
-    return rowsWithDlq.get(MAIN_TAG);
+    return rowsWithDlq.get(MAIN_TAG);*/
   }
 
   private PubsubIO.Read<PubsubMessage> readMessagesWithAttributes() {
@@ -189,6 +188,10 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public POutput buildIOWriter(PCollection<Row> input) {
+    PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
+    PTransform<PCollection<Row>, POutput> writerTransform = pubsubSchemaIO.buildWriter();
+    return writerTransform.expand(input);
+/*
     if (!config.getUseFlatSchema()) {
       throw new UnsupportedOperationException(
           "Writing to a Pubsub topic is only supported for flattened schemas");
@@ -196,7 +199,7 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
     return input
         .apply(RowToPubsubMessage.fromTableConfig(config))
-        .apply(createPubsubMessageWrite());
+        .apply(createPubsubMessageWrite());*/
   }
 
   private PubsubIO.Write<PubsubMessage> createPubsubMessageWrite() {

@@ -65,13 +65,16 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
 
     System.out.println("tableProperties is " + tableProperties);
 
+    Schema schema = tableDefinition.getSchema();
+
     PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
     Schema configurationSchema = ioProvider.configurationSchema();
     System.out.println("Here");
 
     Row configurationRow = Row.withSchema(configurationSchema)
             .withFieldValue("timestampAttributeKey", timestampAttributeKey)
-              .withFieldValue("deadLetterQueue", deadLetterQueue)
+            .withFieldValue("deadLetterQueue", deadLetterQueue)
+            .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema)) ////should need setbooleanval?
             .build();
 
     System.out.println("here2");
@@ -81,8 +84,6 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
 
     PubsubSchemaIO  pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
 
-
-    Schema schema = tableDefinition.getSchema();
     System.out.println("Schema is " + schema);
     validateEventTimestamp(schema);
 

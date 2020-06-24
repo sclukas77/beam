@@ -45,7 +45,7 @@ public class PubsubSchemaCapableIOProvider {
     public PubsubSchemaIO from(String location,
                   Row configuration,
                   Schema dataSchema) {
-        return PubsubSchemaIO.withConfiguration(configuration, dataSchema);
+        return PubsubSchemaIO.withConfiguration(location, configuration, dataSchema);
     }
 
 }
