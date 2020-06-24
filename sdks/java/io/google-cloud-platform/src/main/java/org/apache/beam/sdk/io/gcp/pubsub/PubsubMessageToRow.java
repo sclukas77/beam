@@ -15,22 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.schemas.io.pubsub;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.beam.sdk.util.RowJsonUtils.newObjectMapperWith;
+package org.apache.beam.sdk.io.gcp.pubsub;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
-import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Internal;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.TypeName;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -39,12 +29,18 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.util.RowJson.RowJsonDeserializer;
 import org.apache.beam.sdk.util.RowJson.UnsupportedRowJsonException;
 import org.apache.beam.sdk.util.RowJsonUtils;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.*;
 import org.joda.time.Instant;
+
+import javax.annotation.Nullable;
+import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
+import static org.apache.beam.sdk.util.RowJsonUtils.newObjectMapperWith;
 
 /** Read side converter for {@link PubsubMessage} with JSON payload. */
 @Internal

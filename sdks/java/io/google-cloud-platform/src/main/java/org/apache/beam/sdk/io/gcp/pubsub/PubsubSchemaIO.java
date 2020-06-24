@@ -1,20 +1,22 @@
-package org.apache.beam.sdk.schemas.io.pubsub;
+package org.apache.beam.sdk.io.gcp.pubsub;
 
 import org.apache.beam.sdk.annotations.Internal;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.*;
-import org.apache.beam.sdk.io.gcp.pubsub.*;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+
 import java.io.Serializable;
 
+import static org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageToRow.DLQ_TAG;
+import static org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageToRow.MAIN_TAG;
+
+//import static org.apache.beam.sdk.schemas.io.pubsub.PubsubMessageToRow.*;
+
+//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 //import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.VARCHAR;
-import static org.apache.beam.sdk.schemas.Schema.TypeName.ROW;
-import static org.apache.beam.sdk.schemas.io.pubsub.PubsubMessageToRow.*;
 
 @Internal
 public class PubsubSchemaIO implements Serializable {
@@ -92,7 +94,7 @@ public class PubsubSchemaIO implements Serializable {
                 PubsubIO.readMessagesWithAttributes().fromTopic(location);
 
         //get this from configuration row
-        return config.getValue("timestampAttributeKey")
+        return useTimestampAttribute(config)
                 ? read.withTimestampAttribute(config.getValue("timestampAttributeKey"))
                 : read;
     }

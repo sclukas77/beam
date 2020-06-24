@@ -1,16 +1,11 @@
-package org.apache.beam.sdk.schemas.io.pubsub;
+package org.apache.beam.sdk.io.gcp.pubsub;
 
 import com.google.auto.service.AutoService;
-import com.google.auto.value.AutoValue;
 import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.io.SchemaCapableIOProvider;
-import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.values.Row;
-
-import javax.annotation.Nullable;
-import java.io.Serializable;
 
 //import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.VARCHAR;
 
@@ -33,6 +28,7 @@ public class PubsubSchemaCapableIOProvider {
         return Schema.builder()
                 .addNullableField("deadLetterQueue", FieldType.STRING)
                 .addNullableField("timestampAttributeKey",FieldType.STRING)
+                .addBooleanField("useFlatSchema")
                 .build();
     }
 
@@ -43,8 +39,8 @@ public class PubsubSchemaCapableIOProvider {
 
     //needs to initialize a SchemaIO object
     public PubsubSchemaIO from(String location,
-                  Row configuration,
-                  Schema dataSchema) {
+                               Row configuration,
+                               Schema dataSchema) {
         return PubsubSchemaIO.withConfiguration(location, configuration, dataSchema);
     }
 

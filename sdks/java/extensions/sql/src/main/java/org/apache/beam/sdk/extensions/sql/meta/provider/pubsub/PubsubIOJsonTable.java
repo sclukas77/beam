@@ -31,7 +31,8 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
+//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -146,6 +147,7 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
+    //PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PBegin, PCollection<Row>> readerTransform = pubsubSchemaIO.buildReader();
     return readerTransform.expand(begin);

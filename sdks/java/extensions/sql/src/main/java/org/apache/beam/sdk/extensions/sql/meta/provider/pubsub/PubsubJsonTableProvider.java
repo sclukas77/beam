@@ -37,9 +37,11 @@ import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvide
 import org.apache.beam.sdk.extensions.sql.meta.provider.InvalidTableException;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaCapableIOProvider;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaCapableIOProvider;
-import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
+//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaCapableIOProvider;
+//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.values.Row;
 
 /**
@@ -77,12 +79,14 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema)) ////should need setbooleanval?
             .build();
 
+    System.out.println("row is " + configurationRow);
+
     System.out.println("here2");
 
     String location = tableDefinition.getLocation();
     Schema dataSchema = tableDefinition.getSchema();
 
-    PubsubSchemaIO  pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
+    PubsubSchemaIO pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
 
     System.out.println("Schema is " + schema);
     validateEventTimestamp(schema);
@@ -181,7 +185,7 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
      */
     public abstract Schema getSchema();
 
-    public abstract PubsubSchemaIO getPubsubSchemaIO();
+    public abstract org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO getPubsubSchemaIO();
 
     static Builder builder() {
       return new AutoValue_PubsubJsonTableProvider_PubsubIOTableConfiguration.Builder();
