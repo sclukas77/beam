@@ -24,35 +24,39 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.io.SchemaCapableIOProvider;
 import org.apache.beam.sdk.values.Row;
 
+/**
+ * {@link org.apache.beam.sdk.schemas.io.SchemaCapableIOProvider} to create {@link PubsubSchemaIO}
+ * that implements {@link org.apache.beam.sdk.schemas.io.SchemaIO}.
+ */
 @Internal
 @AutoService(SchemaCapableIOProvider.class)
-public class PubsubSchemaCapableIOProvider {
+public class PubsubSchemaCapableIOProvider implements SchemaCapableIOProvider {
 
-    /** Returns an id that uniquely represents this IO. */
-    public String identifier() {
-        return "pubsub";
-    }
+  /** Returns an id that uniquely represents this IO. */
+  @Override
+  public String identifier() {
+    return "pubsub";
+  }
 
-    /**
-     * Returns the expected schema of the configuration object. Note this
-     * is distinct from the schema of the data source itself.
-     */
-    public Schema configurationSchema() {
-        return Schema.builder()
-                .addNullableField("deadLetterQueue", FieldType.STRING)
-                .addNullableField("timestampAttributeKey",FieldType.STRING)
-                .addBooleanField("useFlatSchema")
-                .build();
-    }
+  /**
+   * Returns the expected schema of the configuration object. Note this is distinct from the schema
+   * of the data source itself.
+   */
+  @Override
+  public Schema configurationSchema() {
+    return Schema.builder()
+        .addNullableField("deadLetterQueue", FieldType.STRING)
+        .addNullableField("timestampAttributeKey", FieldType.STRING)
+        .addBooleanField("useFlatSchema")
+        .build();
+  }
 
-    /**
-     * Produce a SchemaIO given a String representing the data's
-     * location, the schema of the data that resides there, and some
-     * IO-specific configuration object.*/
-    public PubsubSchemaIO from(String location,
-                               Row configuration,
-                               Schema dataSchema) {
-        return PubsubSchemaIO.withConfiguration(location, configuration, dataSchema);
-    }
-
+  /**
+   * Produce a SchemaIO given a String representing the data's location, the schema of the data that
+   * resides there, and some IO-specific configuration object.
+   */
+  @Override
+  public PubsubSchemaIO from(String location, Row configuration, Schema dataSchema) {
+    return PubsubSchemaIO.withConfiguration(location, configuration, dataSchema);
+  }
 }

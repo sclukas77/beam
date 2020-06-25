@@ -25,8 +25,9 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
 public interface SchemaIO {
-    Schema schema();
+  Schema schema();
 
-    PTransform<PBegin, PCollection<Row>> buildReader();
-    PTransform<PCollection<Row>, POutput> buildWriter();
+  PTransform<PBegin, PCollection<Row>> buildReader();
+
+  PTransform<PCollection<Row>, POutput> buildWriter();
 }

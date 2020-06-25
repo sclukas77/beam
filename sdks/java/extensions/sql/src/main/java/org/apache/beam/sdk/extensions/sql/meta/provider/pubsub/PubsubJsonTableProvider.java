@@ -69,7 +69,8 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
     Schema configurationSchema = ioProvider.configurationSchema();
 
-    Row configurationRow = Row.withSchema(configurationSchema)
+    Row configurationRow =
+        Row.withSchema(configurationSchema)
             .withFieldValue("timestampAttributeKey", timestampAttributeKey)
             .withFieldValue("deadLetterQueue", deadLetterQueue)
             .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema))

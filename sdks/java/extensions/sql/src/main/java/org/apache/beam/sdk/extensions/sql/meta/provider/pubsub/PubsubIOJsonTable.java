@@ -24,9 +24,9 @@ import org.apache.beam.sdk.extensions.sql.impl.BeamTableStatistics;
 import org.apache.beam.sdk.extensions.sql.meta.BaseBeamTable;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -78,9 +78,6 @@ import org.apache.beam.sdk.values.Row;
  * the value of that attribute. If it is not specified, then message publish time will be used as
  * event timestamp. 'attributes' map contains Pubsub message attributes map unchanged and can be
  * referenced in the queries as well.
- *
- * <p>Alternatively, one can use a flattened schema to model the pubsub messages (meaning {@link
- * PubsubIOTableConfiguration#getUseFlatSchema()} is set).
  *
  * <p>In this configuration, only {@code event_timestamp} is required to be specified in the table
  * schema. All other fields are assumed to be part of the message payload. SQL statements to declare
@@ -144,7 +141,6 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
   public PCollection<Row> buildIOReader(PBegin begin) {
     PTransform<PBegin, PCollection<Row>> readerTransform = pubsubSchemaIO.buildReader();
     return readerTransform.expand(begin);
-
   }
 
   @Override
