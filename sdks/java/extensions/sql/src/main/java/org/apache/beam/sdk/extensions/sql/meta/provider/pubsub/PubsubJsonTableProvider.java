@@ -19,16 +19,10 @@ package org.apache.beam.sdk.extensions.sql.meta.provider.pubsub;
 
 import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.TIMESTAMP;
 import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.VARCHAR;
-/*import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.ATTRIBUTES_FIELD;
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.PAYLOAD_FIELD;
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.TIMESTAMP_FIELD;*/
 import static org.apache.beam.sdk.schemas.Schema.TypeName.ROW;
 
 import com.alibaba.fastjson.JSONObject;
 import com.google.auto.service.AutoService;
-import com.google.auto.value.AutoValue;
-import java.io.Serializable;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
@@ -64,9 +58,14 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     JSONObject tableProperties = tableDefinition.getProperties();
     String timestampAttributeKey = tableProperties.getString("timestampAttributeKey");
     String deadLetterQueue = tableProperties.getString("deadLetterQueue");
-    validateDlq(deadLetterQueue);
 
     Schema schema = tableDefinition.getSchema();
+    String location = tableDefinition.getLocation();
+    Schema dataSchema = tableDefinition.getSchema();
+
+    validateDlq(deadLetterQueue);
+    validateEventTimestamp(schema);
+
     PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
     Schema configurationSchema = ioProvider.configurationSchema();
 
@@ -76,23 +75,8 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema))
             .build();
 
-    String location = tableDefinition.getLocation();
-    Schema dataSchema = tableDefinition.getSchema();
     PubsubSchemaIO pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
-
-    validateEventTimestamp(schema);
-
-    PubsubIOTableConfiguration config =
-        PubsubIOTableConfiguration.builder()
-            .setSchema(schema)
-            .setTimestampAttribute(timestampAttributeKey)
-            .setDeadLetterQueue(deadLetterQueue)
-            .setTopic(tableDefinition.getLocation())
-            .setUseFlatSchema(!definesAttributeAndPayload(schema))
-            .setPubsubSchemaIO(pubsubSchemaIO)
-            .build();
-
-    return PubsubIOJsonTable.withConfiguration(config);
+    return PubsubIOJsonTable.withConfiguration(pubsubSchemaIO, schema);
   }
 
   private void validateEventTimestamp(Schema schema) {
@@ -120,75 +104,6 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
   private void validateDlq(String deadLetterQueue) {
     if (deadLetterQueue != null && deadLetterQueue.isEmpty()) {
       throw new InvalidTableException("Dead letter queue topic name is not specified");
-    }
-  }
-
-  @AutoValue
-  public abstract static class PubsubIOTableConfiguration implements Serializable {
-
-    /** Determines whether or not the messages should be represented with a flattened schema. */
-    abstract boolean getUseFlatSchema();
-
-    /**
-     * Optional attribute key of the Pubsub message from which to extract the event timestamp.
-     *
-     * <p>This attribute has to conform to the same requirements as in
-     *
-     * <p>Short version: it has to be either millis since epoch or string in RFC 3339 format.
-     *
-     * <p>If the attribute is specified then event timestamps will be extracted from the specified
-     * attribute. If it is not specified then message publish timestamp will be used.
-     */
-    @Nullable
-    abstract String getTimestampAttribute();
-
-    /**
-     * Optional topic path which will be used as a dead letter queue.
-     *
-     * <p>Messages that cannot be processed will be sent to this topic. If it is not specified then
-     * exception will be thrown for errors during processing causing the pipeline to crash.
-     */
-    @Nullable
-    abstract String getDeadLetterQueue();
-
-    /**
-     * Pubsub topic name.
-     *
-     * <p>Topic is the only way to specify the Pubsub source. Explicitly specifying the subscription
-     * is not supported at the moment. Subscriptions are automatically created (but not deleted).
-     */
-    abstract String getTopic();
-
-    /**
-     * Table schema, describes Pubsub message schema.
-     *
-     * <p>If {@link #getUseFlatSchema()} is not set, schema must contain exactly fields
-     * 'event_timestamp', 'attributes, and 'payload'. Else, it must contain just 'event_timestamp'.
-     * See {@linkA PubsubMessageToRow} for details.
-     */
-    public abstract Schema getSchema();
-
-    public abstract org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO getPubsubSchemaIO();
-
-    static Builder builder() {
-      return new AutoValue_PubsubJsonTableProvider_PubsubIOTableConfiguration.Builder();
-    }
-
-    @AutoValue.Builder
-    abstract static class Builder {
-      abstract Builder setUseFlatSchema(boolean useFlatSchema);
-
-      abstract Builder setSchema(Schema schema);
-
-      abstract Builder setTimestampAttribute(String timestampAttribute);
-
-      abstract Builder setDeadLetterQueue(String deadLetterQueue);
-
-      abstract Builder setTopic(String topic);
-
-      abstract Builder setPubsubSchemaIO(PubsubSchemaIO pubsubSchemaIO);
-
-      abstract PubsubIOTableConfiguration build();
     }
   }
 }

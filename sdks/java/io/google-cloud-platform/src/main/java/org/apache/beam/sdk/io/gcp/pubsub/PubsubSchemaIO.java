@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.beam.sdk.io.gcp.pubsub;
 
 import org.apache.beam.sdk.annotations.Internal;
@@ -9,14 +26,6 @@ import java.io.Serializable;
 
 import static org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageToRow.DLQ_TAG;
 import static org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageToRow.MAIN_TAG;
-
-//import static org.apache.beam.sdk.schemas.io.pubsub.PubsubMessageToRow.*;
-
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-//import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-//import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.VARCHAR;
 
 @Internal
 public class PubsubSchemaIO implements Serializable {
@@ -30,17 +39,14 @@ public class PubsubSchemaIO implements Serializable {
         this.location = location;
     }
 
-    //public method to call private constructor
     static PubsubSchemaIO withConfiguration(String location, Row config, Schema dataSchema) {
         return new PubsubSchemaIO(location, config, dataSchema);
     }
 
-    //returns the schema of the data
     Schema schema() {
         return dataSchema;
     }
 
-    //return something like a pubsubmessagetorow class
     public PTransform<PBegin, PCollection<Row>> buildReader() {
         return new PTransform<PBegin, PCollection<Row>>() {
             @Override
@@ -53,7 +59,6 @@ public class PubsubSchemaIO implements Serializable {
                                         PubsubMessageToRow.builder()
                                                 .messageSchema(dataSchema)
                                                 .useDlq(useDlqCheck(config))
-                                                //.useFlatSchema(!definesAttributeAndPayload(dataSchema))
                                                 .useFlatSchema(config.getBoolean("useFlatSchema"))
                                                 .build());
                 rowsWithDlq.get(MAIN_TAG).setRowSchema(dataSchema);
@@ -70,7 +75,6 @@ public class PubsubSchemaIO implements Serializable {
 
     }
 
-    //return something like a rowtomessage class
     public PTransform<PCollection<Row>, POutput> buildWriter() {
         if(!config.getBoolean("useFlatSchema")) {
             throw new UnsupportedOperationException(
@@ -88,29 +92,14 @@ public class PubsubSchemaIO implements Serializable {
 
     }
 
-
     private PubsubIO.Read<PubsubMessage> readMessagesWithAttributes() {
         PubsubIO.Read<PubsubMessage> read =
                 PubsubIO.readMessagesWithAttributes().fromTopic(location);
 
-        //get this from configuration row
         return useTimestampAttribute(config)
                 ? read.withTimestampAttribute(config.getValue("timestampAttributeKey"))
                 : read;
     }
-    /*
-    private boolean definesAttributeAndPayload(Schema schema) {
-        return fieldPresent(
-                schema, ATTRIBUTES_FIELD, Schema.FieldType.map(VARCHAR.withNullable(false), VARCHAR))
-                && (schema.hasField(PAYLOAD_FIELD)
-                && ROW.equals(schema.getField(PAYLOAD_FIELD).getType().getTypeName()));
-    }
-
-    private boolean fieldPresent(Schema schema, String field, Schema.FieldType expectedType) {
-        return schema.hasField(field)
-                && expectedType.equivalent(
-                schema.getField(field).getType(), Schema.EquivalenceNullablePolicy.IGNORE);
-    }*/
 
     private PubsubIO.Write<PubsubMessage> writeMessagesToDlq() {
         PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages().to(config.getString("deadLetterQueue"));

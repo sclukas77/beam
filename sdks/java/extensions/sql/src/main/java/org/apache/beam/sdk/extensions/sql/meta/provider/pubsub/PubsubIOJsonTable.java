@@ -23,7 +23,6 @@ import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.extensions.sql.impl.BeamTableStatistics;
 import org.apache.beam.sdk.extensions.sql.meta.BaseBeamTable;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
-import org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubJsonTableProvider.PubsubIOTableConfiguration;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
@@ -119,14 +118,16 @@ import org.apache.beam.sdk.values.Row;
 @Experimental
 class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
-  protected final PubsubIOTableConfiguration config;
+  protected final PubsubSchemaIO pubsubSchemaIO;
+  protected final Schema schema;
 
-  private PubsubIOJsonTable(PubsubIOTableConfiguration config) {
-    this.config = config;
+  private PubsubIOJsonTable(PubsubSchemaIO pubsubSchemaIO, Schema schema) {
+    this.pubsubSchemaIO = pubsubSchemaIO;
+    this.schema = schema;
   }
 
-  static PubsubIOJsonTable withConfiguration(PubsubIOTableConfiguration config) {
-    return new PubsubIOJsonTable(config);
+  static PubsubIOJsonTable withConfiguration(PubsubSchemaIO pubsubSchemaIO, Schema schema) {
+    return new PubsubIOJsonTable(pubsubSchemaIO, schema);
   }
 
   @Override
@@ -136,12 +137,11 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public Schema getSchema() {
-    return config.getSchema();
+    return schema;
   }
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
-    PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PBegin, PCollection<Row>> readerTransform = pubsubSchemaIO.buildReader();
     return readerTransform.expand(begin);
 
@@ -149,7 +149,6 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public POutput buildIOWriter(PCollection<Row> input) {
-    PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PCollection<Row>, POutput> writerTransform = pubsubSchemaIO.buildWriter();
     return writerTransform.expand(input);
   }
