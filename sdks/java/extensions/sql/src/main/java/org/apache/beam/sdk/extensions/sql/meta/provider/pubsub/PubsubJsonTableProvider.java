@@ -125,13 +125,6 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
 
   @AutoValue
   public abstract static class PubsubIOTableConfiguration implements Serializable {
-    /*public boolean useDlq() {
-      return getDeadLetterQueue() != null;
-    }
-
-    public boolean useTimestampAttribute() {
-      return getTimestampAttribute() != null;
-    }*/
 
     /** Determines whether or not the messages should be represented with a flattened schema. */
     abstract boolean getUseFlatSchema();
