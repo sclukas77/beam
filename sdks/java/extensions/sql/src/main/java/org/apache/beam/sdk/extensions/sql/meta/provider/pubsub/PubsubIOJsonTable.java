@@ -17,9 +17,6 @@
  */
 package org.apache.beam.sdk.extensions.sql.meta.provider.pubsub;
 
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.DLQ_TAG;
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.MAIN_TAG;
-
 import java.io.Serializable;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Internal;
@@ -28,15 +25,12 @@ import org.apache.beam.sdk.extensions.sql.meta.BaseBeamTable;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubJsonTableProvider.PubsubIOTableConfiguration;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
-//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
@@ -147,45 +141,10 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
-    //PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PBegin, PCollection<Row>> readerTransform = pubsubSchemaIO.buildReader();
     return readerTransform.expand(begin);
 
-   /* PCollectionTuple rowsWithDlq =
-        begin
-            .apply("ReadFromPubsub", readMessagesWithAttributes())
-            .apply(
-                "PubsubMessageToRow",
-                PubsubMessageToRow.builder()
-                    .messageSchema(getSchema())
-                    .useDlq(config.useDlq())
-                    .useFlatSchema(config.getUseFlatSchema())
-                    .build());
-    rowsWithDlq.get(MAIN_TAG).setRowSchema(getSchema());
-
-    if (config.useDlq()) {
-      rowsWithDlq.get(DLQ_TAG).apply(writeMessagesToDlq());
-    }
-
-    return rowsWithDlq.get(MAIN_TAG);*/
-  }
-
-  private PubsubIO.Read<PubsubMessage> readMessagesWithAttributes() {
-    PubsubIO.Read<PubsubMessage> read =
-        PubsubIO.readMessagesWithAttributes().fromTopic(config.getTopic());
-
-    return config.useTimestampAttribute()
-        ? read.withTimestampAttribute(config.getTimestampAttribute())
-        : read;
-  }
-
-  private PubsubIO.Write<PubsubMessage> writeMessagesToDlq() {
-    PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages().to(config.getDeadLetterQueue());
-
-    return config.useTimestampAttribute()
-        ? write.withTimestampAttribute(config.getTimestampAttribute())
-        : write;
   }
 
   @Override
@@ -193,23 +152,6 @@ class PubsubIOJsonTable extends BaseBeamTable implements Serializable {
     PubsubSchemaIO pubsubSchemaIO = config.getPubsubSchemaIO();
     PTransform<PCollection<Row>, POutput> writerTransform = pubsubSchemaIO.buildWriter();
     return writerTransform.expand(input);
-/*
-    if (!config.getUseFlatSchema()) {
-      throw new UnsupportedOperationException(
-          "Writing to a Pubsub topic is only supported for flattened schemas");
-    }
-
-    return input
-        .apply(RowToPubsubMessage.fromTableConfig(config))
-        .apply(createPubsubMessageWrite());*/
-  }
-
-  private PubsubIO.Write<PubsubMessage> createPubsubMessageWrite() {
-    PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages().to(config.getTopic());
-    if (config.useTimestampAttribute()) {
-      write = write.withTimestampAttribute(config.getTimestampAttribute());
-    }
-    return write;
   }
 
   @Override

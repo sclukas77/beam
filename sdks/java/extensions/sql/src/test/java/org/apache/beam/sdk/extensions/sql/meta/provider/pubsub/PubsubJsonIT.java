@@ -139,11 +139,9 @@ public class PubsubJsonIT implements Serializable {
     BeamSqlEnv sqlEnv = BeamSqlEnv.inMemory(new PubsubJsonTableProvider());
     sqlEnv.executeDdl(createTableString);
 
-    System.out.println("beginning");
     // Apply the PTransform to query the pubsub topic
     PCollection<Row> queryOutput = query(sqlEnv, pipeline, queryString);
 
-    System.out.println("end");
     // Observe the query results and send success signal after seeing the expected messages
     queryOutput.apply(
         "waitForSuccess",

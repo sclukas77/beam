@@ -19,9 +19,9 @@ package org.apache.beam.sdk.extensions.sql.meta.provider.pubsub;
 
 import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.TIMESTAMP;
 import static org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils.VARCHAR;
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.ATTRIBUTES_FIELD;
+/*import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.ATTRIBUTES_FIELD;
 import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.PAYLOAD_FIELD;
-import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.TIMESTAMP_FIELD;
+import static org.apache.beam.sdk.extensions.sql.meta.provider.pubsub.PubsubMessageToRow.TIMESTAMP_FIELD;*/
 import static org.apache.beam.sdk.schemas.Schema.TypeName.ROW;
 
 import com.alibaba.fastjson.JSONObject;
@@ -40,8 +40,6 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaCapableIOProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.schemas.Schema;
-//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaCapableIOProvider;
-//import org.apache.beam.sdk.schemas.io.pubsub.PubsubSchemaIO;
 import org.apache.beam.sdk.values.Row;
 
 /**
@@ -52,6 +50,9 @@ import org.apache.beam.sdk.values.Row;
 @Experimental
 @AutoService(TableProvider.class)
 public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
+  static final String TIMESTAMP_FIELD = "event_timestamp";
+  static final String ATTRIBUTES_FIELD = "attributes";
+  static final String PAYLOAD_FIELD = "payload";
 
   @Override
   public String getTableType() {
@@ -65,30 +66,20 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
     String deadLetterQueue = tableProperties.getString("deadLetterQueue");
     validateDlq(deadLetterQueue);
 
-    System.out.println("tableProperties is " + tableProperties);
-
     Schema schema = tableDefinition.getSchema();
-
     PubsubSchemaCapableIOProvider ioProvider = new PubsubSchemaCapableIOProvider();
     Schema configurationSchema = ioProvider.configurationSchema();
-    System.out.println("Here");
 
     Row configurationRow = Row.withSchema(configurationSchema)
             .withFieldValue("timestampAttributeKey", timestampAttributeKey)
             .withFieldValue("deadLetterQueue", deadLetterQueue)
-            .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema)) ////should need setbooleanval?
+            .withFieldValue("useFlatSchema", !definesAttributeAndPayload(schema))
             .build();
-
-    System.out.println("row is " + configurationRow);
-
-    System.out.println("here2");
 
     String location = tableDefinition.getLocation();
     Schema dataSchema = tableDefinition.getSchema();
-
     PubsubSchemaIO pubsubSchemaIO = ioProvider.from(location, configurationRow, dataSchema);
 
-    System.out.println("Schema is " + schema);
     validateEventTimestamp(schema);
 
     PubsubIOTableConfiguration config =
@@ -101,7 +92,6 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
             .setPubsubSchemaIO(pubsubSchemaIO)
             .build();
 
-    System.out.println("location is " + tableDefinition.getLocation());
     return PubsubIOJsonTable.withConfiguration(config);
   }
 
@@ -135,13 +125,13 @@ public class PubsubJsonTableProvider extends InMemoryMetaTableProvider {
 
   @AutoValue
   public abstract static class PubsubIOTableConfiguration implements Serializable {
-    public boolean useDlq() {
+    /*public boolean useDlq() {
       return getDeadLetterQueue() != null;
     }
 
     public boolean useTimestampAttribute() {
       return getTimestampAttribute() != null;
-    }
+    }*/
 
     /** Determines whether or not the messages should be represented with a flattened schema. */
     abstract boolean getUseFlatSchema();
