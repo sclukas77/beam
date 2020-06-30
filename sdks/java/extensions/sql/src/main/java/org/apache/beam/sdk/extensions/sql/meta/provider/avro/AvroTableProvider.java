@@ -22,6 +22,8 @@ import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.Table;
 import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvider;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
+import org.apache.beam.sdk.io.AvroSchemaCapableIOProvider;
+import org.apache.beam.sdk.values.Row;
 
 /**
  * {@link TableProvider} for {@link AvroTable}.
@@ -47,6 +49,14 @@ public class AvroTableProvider extends InMemoryMetaTableProvider {
 
   @Override
   public BeamSqlTable buildBeamSqlTable(Table table) {
-    return new AvroTable(table.getName(), table.getSchema(), table.getLocation());
+    AvroSchemaCapableIOProvider avroSchemaCapableIOProvider = new AvroSchemaCapableIOProvider();
+
+    Row configurationRow =
+        Row.withSchema(avroSchemaCapableIOProvider.configurationSchema())
+            .withFieldValue("tableName", table.getName())
+            .build();
+
+    return new AvroTable(
+        avroSchemaCapableIOProvider.from(table.getLocation(), configurationRow, table.getSchema()));
   }
 }
