@@ -22,6 +22,8 @@ import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.Table;
 import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvider;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
+import org.apache.beam.sdk.io.parquet.ParquetSchemaCapableIOProvider;
+import org.apache.beam.sdk.values.Row;
 
 /**
  * {@link TableProvider} for {@link ParquetTable}.
@@ -47,6 +49,14 @@ public class ParquetTableProvider extends InMemoryMetaTableProvider {
 
   @Override
   public BeamSqlTable buildBeamSqlTable(Table table) {
-    return new ParquetTable(table.getSchema(), table.getLocation());
+    ParquetSchemaCapableIOProvider parquetSchemaCapableIOProvider =
+        new ParquetSchemaCapableIOProvider();
+
+    Row configurationRow =
+        Row.withSchema(parquetSchemaCapableIOProvider.configurationSchema()).build();
+
+    return new ParquetTable(
+        parquetSchemaCapableIOProvider.from(
+            table.getLocation(), configurationRow, table.getSchema()));
   }
 }
