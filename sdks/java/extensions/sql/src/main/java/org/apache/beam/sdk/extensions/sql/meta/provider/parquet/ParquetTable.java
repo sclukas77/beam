@@ -18,42 +18,37 @@
 package org.apache.beam.sdk.extensions.sql.meta.provider.parquet;
 
 import java.io.Serializable;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.extensions.sql.impl.BeamTableStatistics;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.SchemaBaseBeamTable;
-import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
 /** {@link ParquetTable} is a {@link BeamSqlTable}. */
 public class ParquetTable extends SchemaBaseBeamTable implements Serializable {
-  private final String filePattern;
+  private final SchemaIO parquetSchemaIO;
 
-  public ParquetTable(Schema beamSchema, String filePattern) {
-    super(beamSchema);
-    this.filePattern = filePattern;
+  public ParquetTable(SchemaIO parquetSchemaIO) {
+    super(parquetSchemaIO.schema());
+    this.parquetSchemaIO = parquetSchemaIO;
   }
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
-    PTransform<PCollection<GenericRecord>, PCollection<Row>> readConverter =
-        GenericRecordReadConverter.builder().beamSchema(schema).build();
-
-    return begin
-        .apply("ParquetIORead", ParquetIO.read(AvroUtils.toAvroSchema(schema)).from(filePattern))
-        .apply("GenericRecordToRow", readConverter);
+    PTransform<PBegin, PCollection<Row>> readerTransform = parquetSchemaIO.buildReader();
+    return begin.apply(readerTransform);
   }
 
   @Override
   public PDone buildIOWriter(PCollection<Row> input) {
-    throw new UnsupportedOperationException("Writing to a Parquet file is not supported");
+    PTransform<PCollection<Row>, POutput> writerTransform = parquetSchemaIO.buildWriter();
+    return (PDone) input.apply(writerTransform);
   }
 
   @Override
