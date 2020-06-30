@@ -18,56 +18,37 @@
 package org.apache.beam.sdk.extensions.sql.meta.provider.avro;
 
 import java.io.Serializable;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.extensions.sql.impl.BeamTableStatistics;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.SchemaBaseBeamTable;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.transforms.Convert;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
 /** {@link AvroTable} is a {@link BeamSqlTable}. */
 public class AvroTable extends SchemaBaseBeamTable implements Serializable {
-  private final String filePattern;
-  private final String tableName;
+  private final SchemaIO avroSchemaIO;
 
-  public AvroTable(String tableName, Schema beamSchema, String filePattern) {
-    super(beamSchema);
-    this.filePattern = filePattern;
-    this.tableName = tableName;
+  public AvroTable(SchemaIO avroSchemaIO) {
+    super(avroSchemaIO.schema());
+    this.avroSchemaIO = avroSchemaIO;
   }
 
   @Override
   public PCollection<Row> buildIOReader(PBegin begin) {
-
-    return begin
-        .apply(
-            "AvroIORead",
-            AvroIO.readGenericRecords(AvroUtils.toAvroSchema(schema, tableName, null))
-                .withBeamSchemas(true)
-                .from(filePattern))
-        .apply("GenericRecordToRow", Convert.toRows());
+    PTransform<PBegin, PCollection<Row>> readerTransform = avroSchemaIO.buildReader();
+    return begin.apply(readerTransform);
   }
 
   @Override
   public PDone buildIOWriter(PCollection<Row> input) {
-    PTransform<PCollection<Row>, PCollection<GenericRecord>> writeConverter =
-        GenericRecordWriteConverter.builder().beamSchema(schema).build();
-
-    return input
-        .apply("GenericRecordToRow", writeConverter)
-        .apply(
-            "AvroIOWrite",
-            AvroIO.writeGenericRecords(AvroUtils.toAvroSchema(schema, tableName, null))
-                .to(filePattern)
-                .withoutSharding());
+    PTransform<PCollection<Row>, POutput> writerTransform = avroSchemaIO.buildWriter();
+    return (PDone) input.apply(writerTransform);
   }
 
   @Override
