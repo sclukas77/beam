@@ -66,9 +66,7 @@ public class ParquetTableReadTest {
 
   @Test
   public void testReadParquet() throws IOException {
-    System.out.println("here1");
     String parquetPath = extractParquetFile("users.parquet");
-    System.out.println("here2");
 
     BeamSqlEnv env = BeamSqlEnv.inMemory(new ParquetTableProvider());
     env.executeDdl(

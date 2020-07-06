@@ -66,12 +66,11 @@ public class ParquetSchemaCapableIOProvider implements SchemaCapableIOProvider {
   /** An abstraction to create schema aware IOs. */
   @Internal
   private static class ParquetSchemaIO implements SchemaIO, Serializable {
-    protected final Row config;
+    protected final Row config = null;
     protected final Schema dataSchema;
     protected final String location;
 
     private ParquetSchemaIO(String location, Row config, Schema dataSchema) {
-      this.config = config;
       this.dataSchema = dataSchema;
       this.location = location;
     }

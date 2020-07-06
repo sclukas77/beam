@@ -21,12 +21,14 @@ import com.google.auto.service.AutoService;
 import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
 import org.apache.beam.sdk.extensions.sql.meta.Table;
 import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvider;
+import org.apache.beam.sdk.extensions.sql.meta.provider.SchemaCapableIOTableProviderWrapper;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaCapableIOProvider;
 import org.apache.beam.sdk.io.parquet.ParquetSchemaCapableIOProvider;
 import org.apache.beam.sdk.values.Row;
 
 /**
- * {@link TableProvider} for {@link ParquetTable}.
+ * {@link TableProvider} for {@link org.apache.beam.sdk.io.parquet.ParquetIO}.
  *
  * <p>A sample of parquet table is:
  *
@@ -41,22 +43,8 @@ import org.apache.beam.sdk.values.Row;
  * }</pre>
  */
 @AutoService(TableProvider.class)
-public class ParquetTableProvider extends InMemoryMetaTableProvider {
-  @Override
-  public String getTableType() {
-    return "parquet";
-  }
-
-  @Override
-  public BeamSqlTable buildBeamSqlTable(Table table) {
-    ParquetSchemaCapableIOProvider parquetSchemaCapableIOProvider =
-        new ParquetSchemaCapableIOProvider();
-
-    Row configurationRow =
-        Row.withSchema(parquetSchemaCapableIOProvider.configurationSchema()).build();
-
-    return new ParquetTable(
-        parquetSchemaCapableIOProvider.from(
-            table.getLocation(), configurationRow, table.getSchema()));
+public class ParquetTableProvider extends SchemaCapableIOTableProviderWrapper {
+  public ParquetTableProvider() {
+    super(new ParquetSchemaCapableIOProvider());
   }
 }
