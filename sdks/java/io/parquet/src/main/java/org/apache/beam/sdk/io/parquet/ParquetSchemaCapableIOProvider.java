@@ -32,8 +32,8 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
 /**
- * {@link SchemaCapableIOProvider} to create {@link ParquetSchemaIO} that implements {@link
- * SchemaIO}.
+ * An implementation of {@link SchemaCapableIOProvider} for reading and writing JSON payloads with
+ * {@link ParquetIO}.
  */
 @Internal
 @AutoService(SchemaCapableIOProvider.class)
@@ -46,12 +46,11 @@ public class ParquetSchemaCapableIOProvider implements SchemaCapableIOProvider {
 
   /**
    * Returns the expected schema of the configuration object. Note this is distinct from the schema
-   * of the data source itself.
+   * of the data source itself. No configuration expected for parquet.
    */
   @Override
   public Schema configurationSchema() {
-    return Schema.builder()
-        .build();
+    return Schema.builder().build();
   }
 
   /**
@@ -60,17 +59,16 @@ public class ParquetSchemaCapableIOProvider implements SchemaCapableIOProvider {
    */
   @Override
   public ParquetSchemaIO from(String location, Row configuration, Schema dataSchema) {
-    return new ParquetSchemaIO(location, configuration, dataSchema);
+    return new ParquetSchemaIO(location, dataSchema);
   }
 
   /** An abstraction to create schema aware IOs. */
   @Internal
   private static class ParquetSchemaIO implements SchemaIO, Serializable {
-    protected final Row config = null;
     protected final Schema dataSchema;
     protected final String location;
 
-    private ParquetSchemaIO(String location, Row config, Schema dataSchema) {
+    private ParquetSchemaIO(String location, Schema dataSchema) {
       this.dataSchema = dataSchema;
       this.location = location;
     }

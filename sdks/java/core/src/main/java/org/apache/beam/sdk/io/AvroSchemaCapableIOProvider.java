@@ -34,7 +34,8 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 
 /**
- * {@link SchemaCapableIOProvider} to create {@link AvroSchemaIO} that implements {@link SchemaIO}.
+ * An implementation of {@link SchemaCapableIOProvider} for reading and writing JSON payloads with
+ * {@link AvroIO}.
  */
 @Internal
 @AutoService(SchemaCapableIOProvider.class)
@@ -47,11 +48,11 @@ public class AvroSchemaCapableIOProvider implements SchemaCapableIOProvider {
 
   /**
    * Returns the expected schema of the configuration object. Note this is distinct from the schema
-   * of the data source itself.
+   * of the data source itself. No configuration expected for Avro.
    */
   @Override
   public Schema configurationSchema() {
-    return Schema.builder().addStringField("tableName").build();
+    return Schema.builder().build();
   }
 
   /**
@@ -60,18 +61,16 @@ public class AvroSchemaCapableIOProvider implements SchemaCapableIOProvider {
    */
   @Override
   public AvroSchemaIO from(String location, Row configuration, Schema dataSchema) {
-    return new AvroSchemaIO(location, configuration, dataSchema);
+    return new AvroSchemaIO(location, dataSchema);
   }
 
   /** An abstraction to create schema aware IOs. */
   @Internal
   private static class AvroSchemaIO implements SchemaIO, Serializable {
-    protected final Row config;
     protected final Schema dataSchema;
     protected final String location;
 
-    private AvroSchemaIO(String location, Row config, Schema dataSchema) {
-      this.config = config;
+    private AvroSchemaIO(String location, Schema dataSchema) {
       this.dataSchema = dataSchema;
       this.location = location;
     }
@@ -89,8 +88,7 @@ public class AvroSchemaCapableIOProvider implements SchemaCapableIOProvider {
           return begin
               .apply(
                   "AvroIORead",
-                  AvroIO.readGenericRecords(
-                          AvroUtils.toAvroSchema(dataSchema, config.getString("tableName"), null))
+                  AvroIO.readGenericRecords(AvroUtils.toAvroSchema(dataSchema, null, null))
                       .withBeamSchemas(true)
                       .from(location))
               .apply("GenericRecordToRow", Convert.toRows());
@@ -109,8 +107,7 @@ public class AvroSchemaCapableIOProvider implements SchemaCapableIOProvider {
               .apply("GenericRecordToRow", writeConverter)
               .apply(
                   "AvroIOWrite",
-                  AvroIO.writeGenericRecords(
-                          AvroUtils.toAvroSchema(dataSchema, config.getString("tableName"), null))
+                  AvroIO.writeGenericRecords(AvroUtils.toAvroSchema(dataSchema, null, null))
                       .to(location)
                       .withoutSharding());
         }

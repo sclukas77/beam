@@ -18,17 +18,13 @@
 package org.apache.beam.sdk.extensions.sql.meta.provider.parquet;
 
 import com.google.auto.service.AutoService;
-import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
-import org.apache.beam.sdk.extensions.sql.meta.Table;
-import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvider;
 import org.apache.beam.sdk.extensions.sql.meta.provider.SchemaCapableIOTableProviderWrapper;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaCapableIOProvider;
+import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.io.parquet.ParquetSchemaCapableIOProvider;
-import org.apache.beam.sdk.values.Row;
 
 /**
- * {@link TableProvider} for {@link org.apache.beam.sdk.io.parquet.ParquetIO}.
+ * {@link TableProvider} for {@link ParquetIO} for consumption by Beam SQL.
  *
  * <p>A sample of parquet table is:
  *

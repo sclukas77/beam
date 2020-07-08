@@ -25,12 +25,10 @@ import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubSchemaCapableIOProvider;
 
-/**
- * {@link TableProvider} for {@link PubsubIO} for consumption
- * by Beam SQL.
- */
+/** {@link TableProvider} for {@link PubsubIO} for consumption by Beam SQL. */
 @Internal
 @Experimental
+@AutoService(TableProvider.class)
 public class PubsubJsonTableProvider extends SchemaCapableIOTableProviderWrapper {
   public PubsubJsonTableProvider() {
     super(new PubsubSchemaCapableIOProvider());
