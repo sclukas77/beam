@@ -18,13 +18,16 @@
 package org.apache.beam.sdk.extensions.sql.meta.provider.avro;
 
 import com.google.auto.service.AutoService;
-import org.apache.beam.sdk.extensions.sql.meta.BeamSqlTable;
-import org.apache.beam.sdk.extensions.sql.meta.Table;
-import org.apache.beam.sdk.extensions.sql.meta.provider.InMemoryMetaTableProvider;
+import org.apache.beam.sdk.extensions.sql.meta.provider.SchemaCapableIOTableProviderWrapper;
 import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
+import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.io.AvroSchemaCapableIOProvider;
 
 /**
- * {@link TableProvider} for {@link AvroTable}.
+ * {@link TableProvider} for {@link AvroIO} for consumption by Beam SQL.
+ *
+ * <p>Passes the {@link AvroSchemaCapableIOProvider} to the generalized table provider wrapper,
+ * {@link SchemaCapableIOTableProviderWrapper}, for Avro specific behavior.
  *
  * <p>A sample of avro table is:
  *
@@ -39,14 +42,8 @@ import org.apache.beam.sdk.extensions.sql.meta.provider.TableProvider;
  * }</pre>
  */
 @AutoService(TableProvider.class)
-public class AvroTableProvider extends InMemoryMetaTableProvider {
-  @Override
-  public String getTableType() {
-    return "avro";
-  }
-
-  @Override
-  public BeamSqlTable buildBeamSqlTable(Table table) {
-    return new AvroTable(table.getName(), table.getSchema(), table.getLocation());
+public class AvroTableProvider extends SchemaCapableIOTableProviderWrapper {
+  public AvroTableProvider() {
+    super(new AvroSchemaCapableIOProvider());
   }
 }

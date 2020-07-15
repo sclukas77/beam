@@ -125,6 +125,11 @@ public class PubsubSchemaCapableIOProvider implements SchemaIOProvider {
     return true;
   }
 
+  @Override
+  public PCollection.IsBounded isBounded() {
+    return PCollection.IsBounded.UNBOUNDED;
+  }
+
   private void validateDataSchema(Schema schema) {
     if (schema == null) {
       throw new InvalidSchemaException(
