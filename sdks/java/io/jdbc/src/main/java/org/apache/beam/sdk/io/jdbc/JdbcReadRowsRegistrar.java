@@ -23,11 +23,13 @@ import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
 /** Exposes {@link JdbcIO.ReadRows} as an external transform for cross-language usage. */
@@ -65,21 +67,10 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
       implements ExternalTransformBuilder<ReadConfiguration, PBegin, PCollection<Row>> {
     @Override
     public PTransform<PBegin, PCollection<Row>> buildExternal(ReadConfiguration configuration) {
-      return (new JdbcSchemaIO(configuration)).buildReader();
-      /*DataSourceConfiguration dataSourceConfiguration = configuration.getDataSourceConfiguration();
-
-      JdbcIO.ReadRows readRows =
-          JdbcIO.readRows()
-              .withDataSourceConfiguration(dataSourceConfiguration)
-              .withQuery(configuration.query);
-
-      if (configuration.fetchSize != null) {
-        readRows = readRows.withFetchSize(configuration.fetchSize);
-      }
-      if (configuration.outputParallelization != null) {
-        readRows = readRows.withOutputParallelization(configuration.outputParallelization);
-      }
-      return readRows;*/
+      return (new JdbcSchemaIOProvider()).from(null,
+              new AutoValueSchema().toRowFunction(TypeDescriptor.of(ReadConfiguration.class)).apply(configuration),
+              null)
+              .buildReader();
     }
   }
 }
