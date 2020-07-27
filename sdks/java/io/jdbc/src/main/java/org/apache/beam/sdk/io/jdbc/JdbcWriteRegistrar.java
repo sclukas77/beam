@@ -27,6 +27,7 @@ import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
@@ -44,7 +45,7 @@ public class JdbcWriteRegistrar implements ExternalTransformRegistrar {
 
   /** Parameters class to expose the Write transform to an external SDK. */
   public static class WriteConfiguration extends CrossLanguageConfiguration {
-    private String statement;
+    String statement;
 
     public void setStatement(String statement) {
       this.statement = statement;
@@ -55,13 +56,19 @@ public class JdbcWriteRegistrar implements ExternalTransformRegistrar {
       implements ExternalTransformBuilder<WriteConfiguration, PCollection<Row>, PDone> {
     @Override
     public PTransform<PCollection<Row>, PDone> buildExternal(WriteConfiguration configuration) {
-      DataSourceConfiguration dataSourceConfiguration = configuration.getDataSourceConfiguration();
+      return (PTransform<PCollection<Row>, PDone>) (new JdbcSchemaIO(configuration)).buildWriter();
+      /*DataSourceConfiguration dataSourceConfiguration = configuration.getDataSourceConfiguration();
+
+      PTransform<PCollection<Row>, POutput> transform = JdbcIO.<Row>write()
+              .withDataSourceConfiguration(dataSourceConfiguration)
+              .withStatement(configuration.statement)
+              .withPreparedStatementSetter(new JdbcUtil.BeamRowPreparedStatementSetter());
 
       // TODO: BEAM-10396 use writeRows() when it's available
       return JdbcIO.<Row>write()
           .withDataSourceConfiguration(dataSourceConfiguration)
           .withStatement(configuration.statement)
-          .withPreparedStatementSetter(new JdbcUtil.BeamRowPreparedStatementSetter());
+          .withPreparedStatementSetter(new JdbcUtil.BeamRowPreparedStatementSetter());*/
     }
   }
 }

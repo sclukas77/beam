@@ -17,10 +17,12 @@
  */
 package org.apache.beam.sdk.expansion;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
 /**
  * A registrar which contains a mapping from URNs to available {@link ExternalTransformBuilder}s.
@@ -31,4 +33,17 @@ public interface ExternalTransformRegistrar {
 
   /** A mapping from URN to an {@link ExternalTransformBuilder} class. */
   Map<String, Class<? extends ExternalTransformBuilder>> knownBuilders();
+
+  /** A mapping from URN to an {@link ExternalTransformBuilder} instance. */
+  default Map<String, ExternalTransformRegistrar> knownBuilderInstances() throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+    ImmutableMap.Builder builder = ImmutableMap.<String, ExternalTransformRegistrar>builder();
+    Map<String, Class<? extends ExternalTransformBuilder>> knownBuilders = knownBuilders();
+    for (String urn : knownBuilders.keySet()) {
+      ExternalTransformRegistrar ex = (ExternalTransformRegistrar) knownBuilders
+              .get(urn)
+              .getDeclaredConstructor()
+              .newInstance();
+    }
+    return builder.build();
+  }
 }

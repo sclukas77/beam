@@ -44,9 +44,9 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
 
   /** Parameters class to expose the Read transform to an external SDK. */
   public static class ReadConfiguration extends CrossLanguageConfiguration {
-    private String query;
-    private Integer fetchSize;
-    private Boolean outputParallelization;
+    String query;
+    Integer fetchSize;
+    Boolean outputParallelization;
 
     public void setOutputParallelization(Boolean outputParallelization) {
       this.outputParallelization = outputParallelization;
@@ -65,7 +65,8 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
       implements ExternalTransformBuilder<ReadConfiguration, PBegin, PCollection<Row>> {
     @Override
     public PTransform<PBegin, PCollection<Row>> buildExternal(ReadConfiguration configuration) {
-      DataSourceConfiguration dataSourceConfiguration = configuration.getDataSourceConfiguration();
+      return (new JdbcSchemaIO(configuration)).buildReader();
+      /*DataSourceConfiguration dataSourceConfiguration = configuration.getDataSourceConfiguration();
 
       JdbcIO.ReadRows readRows =
           JdbcIO.readRows()
@@ -78,7 +79,7 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
       if (configuration.outputParallelization != null) {
         readRows = readRows.withOutputParallelization(configuration.outputParallelization);
       }
-      return readRows;
+      return readRows;*/
     }
   }
 }

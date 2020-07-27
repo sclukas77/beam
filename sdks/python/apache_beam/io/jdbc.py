@@ -96,7 +96,7 @@ __all__ = [
 
 
 def default_io_expansion_service():
-  return BeamJarExpansionService('sdks:java:io:expansion-service:shadowJar')
+  return BeamJarExpansionService('beam:external:java:schemaio:v1')
 
 
 WriteToJdbcSchema = typing.NamedTuple(

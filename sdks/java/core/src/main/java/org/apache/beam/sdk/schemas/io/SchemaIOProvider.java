@@ -55,4 +55,5 @@ public interface SchemaIOProvider {
   boolean requiresDataSchema();
 
   PCollection.IsBounded isBounded();
+
 }

@@ -72,10 +72,10 @@ coders.registry.register_coder(JdbcWriteTestRow, coders.RowCoder)
 @unittest.skipIf(sqlalchemy is None, 'sql alchemy package is not installed.')
 @unittest.skipIf(
     PostgresContainer is None, 'testcontainers package is not installed')
-@unittest.skipIf(
-    TestPipeline().get_pipeline_options().view_as(StandardOptions).runner is
-    None,
-    'Do not run this test on precommit suites.')
+#@unittest.skipIf(
+#    TestPipeline().get_pipeline_options().view_as(StandardOptions).runner is
+#    None,
+#    'Do not run this test on precommit suites.')
 class CrossLanguageJdbcIOTest(unittest.TestCase):
   def setUp(self):
     self.postgres = PostgresContainer('postgres:latest')
