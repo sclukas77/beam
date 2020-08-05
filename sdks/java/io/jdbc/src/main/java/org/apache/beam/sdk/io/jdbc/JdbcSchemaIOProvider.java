@@ -17,21 +17,34 @@
  */
 package org.apache.beam.sdk.io.jdbc;
 
+import com.google.auto.service.AutoService;
+import org.apache.beam.sdk.annotations.Internal;
 import org.apache.beam.sdk.io.jdbc.JdbcReadRowsRegistrar.ReadConfiguration;
 import org.apache.beam.sdk.io.jdbc.JdbcWriteRegistrar.WriteConfiguration;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.schemas.io.SchemaIOProvider;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.values.*;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptor;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 /**
  * An implementation of {@link SchemaIOProvider} for reading and writing JSON payloads with {@link
  * JdbcIO}.
  */
-class JdbcSchemaIOProvider implements SchemaIOProvider {
+@Internal
+@AutoService(SchemaIOProvider.class)
+public class JdbcSchemaIOProvider implements SchemaIOProvider {
 
     /** Returns an id that uniquely represents this IO. */
     @Override
@@ -46,6 +59,16 @@ class JdbcSchemaIOProvider implements SchemaIOProvider {
     @Override
     public Schema configurationSchema() {
         return Schema.builder()
+                .addStringField("driverClassName")
+                .addStringField("jdbcUrl")
+                .addStringField("username")
+                .addStringField("password")
+                .addNullableField("connectionProperties", FieldType.STRING)
+                .addNullableField("connectionInitSqls", FieldType.iterable(FieldType.STRING))
+                .addNullableField("query", FieldType.STRING)
+                .addNullableField("fetchSize", FieldType.INT16)
+                .addNullableField("outputParallelization", FieldType.BOOLEAN)
+                .addNullableField("statement", FieldType.STRING)
                 .build();
     }
 
@@ -65,7 +88,7 @@ class JdbcSchemaIOProvider implements SchemaIOProvider {
 
     @Override
     public PCollection.IsBounded isBounded() {
-        return PCollection.IsBounded.UNBOUNDED; ///////////bounded or no?
+        return PCollection.IsBounded.BOUNDED; ///////////bounded or no?
     }
 
 
@@ -86,37 +109,65 @@ class JdbcSchemaIOProvider implements SchemaIOProvider {
 
         @Override
         public PTransform<PBegin, PCollection<Row>> buildReader() {
-            ReadConfiguration readConfig = new AutoValueSchema()
+            /*ReadConfiguration readConfig = new AutoValueSchema()
                     .fromRowFunction(TypeDescriptor.of(ReadConfiguration.class))
                     .apply(config);
-            JdbcIO.DataSourceConfiguration dataSourceConfiguration = readConfig.getDataSourceConfiguration();
+            JdbcIO.DataSourceConfiguration dataSourceConfiguration = readConfig.getDataSourceConfiguration();*/
+            JdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration();
 
             JdbcIO.ReadRows readRows =
                     JdbcIO.readRows()
                             .withDataSourceConfiguration(dataSourceConfiguration)
-                            .withQuery(readConfig.query);
+                            .withQuery(config.getString("query"));
+                            //.withQuery(readConfig.query);
 
-            if (readConfig.fetchSize != null) {
-                readRows = readRows.withFetchSize(readConfig.fetchSize);
+            if (config.getInt16("fetchSize") != null) {
+                readRows = readRows.withFetchSize(config.getInt16("fetchSize"));
             }
-            if (readConfig.outputParallelization != null) {
-                readRows = readRows.withOutputParallelization(readConfig.outputParallelization);
+            if (config.getBoolean("outputParallelization") != null) {
+                readRows = readRows.withOutputParallelization(config.getBoolean("outputParallelization"));
             }
             return readRows;
         }
 
         @Override
         public PTransform<PCollection<Row>, PDone> buildWriter() {
-            WriteConfiguration writeConfig = new AutoValueSchema()
+            /*WriteConfiguration writeConfig = new AutoValueSchema()
                     .fromRowFunction(TypeDescriptor.of(WriteConfiguration.class))
-                    .apply(config);
-            JdbcIO.DataSourceConfiguration dataSourceConfiguration = writeConfig.getDataSourceConfiguration();
+                    .apply(config);*/
+            JdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration();
 
             // TODO: BEAM-10396 use writeRows() when it's available
             return JdbcIO.<Row>write()
                     .withDataSourceConfiguration(dataSourceConfiguration)
-                    .withStatement(writeConfig.statement)
+                    .withStatement(config.getString("statement"))
                     .withPreparedStatementSetter(new JdbcUtil.BeamRowPreparedStatementSetter());
+        }
+
+        protected JdbcIO.DataSourceConfiguration getDataSourceConfiguration() {
+            String driverClassName = config.getString("driverClassName");
+            String jdbcUrl = config.getString("jdbcUrl");
+            String username = config.getString("username");
+            String password = config.getString("password");
+            String connectionProperties = config.getString("connectionProperties");
+            Iterable<String> connectionInitSqls = config.getIterable("connectionInitSqls");
+            JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+                    JdbcIO.DataSourceConfiguration.create(driverClassName, jdbcUrl)
+                            .withUsername(username)
+                            .withPassword(password);
+
+            if (connectionProperties != null) {
+                dataSourceConfiguration =
+                        dataSourceConfiguration.withConnectionProperties(connectionProperties);
+            }
+
+            if (connectionInitSqls != null) {
+                List<String> initSqls =
+                        StreamSupport.stream(connectionInitSqls.spliterator(), false)
+                                .collect(Collectors.toList());
+                dataSourceConfiguration = dataSourceConfiguration.withConnectionInitSqls(initSqls);
+            }
+            return dataSourceConfiguration;
         }
     }
 }

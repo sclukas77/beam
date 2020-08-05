@@ -105,25 +105,35 @@ public class ExpansionService extends ExpansionServiceGrpc.ExpansionServiceImplB
     public Map<String, ExpansionService.TransformProvider> knownTransforms() {
       ImmutableMap.Builder<String, ExpansionService.TransformProvider> builder =
           ImmutableMap.builder();
-      for (ExternalTransformRegistrar registrar :
-          ServiceLoader.load(ExternalTransformRegistrar.class)) {
-        for (Map.Entry<String, Class<? extends ExternalTransformBuilder>> entry :
-            registrar.knownBuilders().entrySet()) {
-          String urn = entry.getKey();
-          Class<? extends ExternalTransformBuilder> builderClass = entry.getValue();
-          builder.put(
-              urn,
-              spec -> {
-                try {
-                  ExternalTransforms.ExternalConfigurationPayload payload =
-                      ExternalTransforms.ExternalConfigurationPayload.parseFrom(spec.getPayload());
-                  return translate(payload, builderClass);
-                } catch (Exception e) {
-                  throw new RuntimeException(
-                      String.format("Failed to build transform %s from spec %s", urn, spec), e);
-                }
-              });
+      try {
+        for (ExternalTransformRegistrar registrar :
+                ServiceLoader.load(ExternalTransformRegistrar.class)) {
+          for (Map.Entry<String, ExternalTransformBuilder> entry :
+                  registrar.knownBuilderInstances().entrySet()) { ////////////shouldn't be class here, shouldn't refer to knownbuilders
+            String urn = entry.getKey();
+            ExternalTransformBuilder builderInstance = entry.getValue();
+            builder.put(
+                    urn,
+                    spec -> { /////////this is a lambda function, spec is passed to below fc
+                      try {
+                        /////payload needs to be parsed into the configuration class
+                        /////return a transform calling buildExternal(configuration)
+                        ExternalTransforms.ExternalConfigurationPayload payload =
+                                ExternalTransforms.ExternalConfigurationPayload.parseFrom(spec.getPayload());
+                        Object config = payloadToConfig(payload, builderInstance.getClass());
+                        return builderInstance.buildExternal(config);
+                        //return translate(payload, builderClass);//////takes in class of knownbuilders, not instance
+                      } catch (Exception e) {
+                        throw new RuntimeException(
+                                String.format("Failed to build transform %s from spec %s", urn, spec), e);
+                      }
+                    });
+          }
         }
+      }
+      catch(Exception e) {
+        StackTraceElement[] stacktrace = e.getStackTrace();
+        System.out.println(e.getMessage());
       }
       return builder.build();
     }
@@ -137,9 +147,17 @@ public class ExpansionService extends ExpansionServiceGrpc.ExpansionServiceImplB
           "Provided identifier %s is not an ExternalTransformBuilder.",
           builderClass.getName());
 
+      Object configObject = initConfiguration(builderClass); ///may still need could pass instance.getClass
+      populateConfiguration(configObject, payload); ////may still need in order to get configobject instance
+      return buildTransform(builderClass, configObject); ////basically calling builder.buildExternal(configobject)
+      ///on instance of builderClass
+    }
+
+    Object payloadToConfig(ExternalTransforms.ExternalConfigurationPayload payload,
+                           Class<? extends ExternalTransformBuilder> builderClass) throws Exception {
       Object configObject = initConfiguration(builderClass);
       populateConfiguration(configObject, payload);
-      return buildTransform(builderClass, configObject);
+      return configObject;
     }
 
     private static Object initConfiguration(Class<? extends ExternalTransformBuilder> builderClass)

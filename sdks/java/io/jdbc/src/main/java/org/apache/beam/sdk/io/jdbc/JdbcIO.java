@@ -544,19 +544,30 @@ public class JdbcIO {
           (getDataSourceProviderFn() != null),
           "withDataSourceConfiguration() or withDataSourceProviderFn() is required");
 
-      Schema schema = inferBeamSchema();
-      PCollection<Row> rows =
-          input.apply(
-              JdbcIO.<Row>read()
-                  .withDataSourceProviderFn(getDataSourceProviderFn())
-                  .withQuery(getQuery())
-                  .withCoder(RowCoder.of(schema))
-                  .withRowMapper(SchemaUtil.BeamRowMapper.of(schema))
-                  .withFetchSize(getFetchSize())
-                  .withOutputParallelization(getOutputParallelization())
-                  .withStatementPreparator(getStatementPreparator()));
-      rows.setRowSchema(schema);
-      return rows;
+      try {
+        Schema schema = inferBeamSchema();
+
+        Read<Row> test = JdbcIO.<Row>read()
+                .withDataSourceProviderFn(getDataSourceProviderFn())
+                .withQuery(getQuery())
+                .withCoder(RowCoder.of(schema))
+                .withRowMapper(SchemaUtil.BeamRowMapper.of(schema))
+                .withFetchSize(getFetchSize())
+                .withOutputParallelization(getOutputParallelization())
+                .withStatementPreparator(getStatementPreparator());
+        int val = 5;
+
+        PCollection<Row> rows =
+                input.apply(
+                        test);
+        rows.setRowSchema(schema);
+        return rows;
+      }
+      catch(Exception e) {
+        StackTraceElement[] stacktrace = e.getStackTrace();
+        System.out.println(e.getMessage());
+      }
+      return null;
     }
 
     private Schema inferBeamSchema() {
@@ -567,6 +578,7 @@ public class JdbcIO {
                   getQuery().get(), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
         return SchemaUtil.toBeamSchema(statement.getMetaData());
       } catch (SQLException e) {
+        StackTraceElement[] stacktrace = e.getStackTrace();
         throw new BeamSchemaInferenceException("Failed to infer Beam schema", e);
       }
     }

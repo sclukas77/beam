@@ -19,6 +19,8 @@ package org.apache.beam.sdk.io.jdbc;
 
 import com.google.auto.service.AutoService;
 import java.util.Map;
+
+import com.google.auto.value.AutoValue;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
@@ -45,6 +47,7 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
   }
 
   /** Parameters class to expose the Read transform to an external SDK. */
+  @AutoValue
   public static class ReadConfiguration extends CrossLanguageConfiguration {
     String query;
     Integer fetchSize;
@@ -67,8 +70,10 @@ public class JdbcReadRowsRegistrar implements ExternalTransformRegistrar {
       implements ExternalTransformBuilder<ReadConfiguration, PBegin, PCollection<Row>> {
     @Override
     public PTransform<PBegin, PCollection<Row>> buildExternal(ReadConfiguration configuration) {
+
+      Row row = new AutoValueSchema().toRowFunction(TypeDescriptor.of(ReadConfiguration.class)).apply(configuration);
       return (new JdbcSchemaIOProvider()).from(null,
-              new AutoValueSchema().toRowFunction(TypeDescriptor.of(ReadConfiguration.class)).apply(configuration),
+              row,
               null)
               .buildReader();
     }

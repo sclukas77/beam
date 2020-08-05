@@ -19,34 +19,43 @@
 package org.apache.beam.sdk.extensions.schemaio.expansion;
 
 import com.google.auto.service.AutoService;
-import com.google.protobuf.InvalidProtocolBufferException;
+//import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.beam.model.pipeline.v1.SchemaApi;
+import org.apache.beam.sdk.annotations.Experimental;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.SchemaCoder;
+import org.apache.beam.sdk.schemas.SchemaRegistry;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.schemas.io.SchemaIOProvider;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.values.*;
+import org.apache.beam.sdk.values.PBegin;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+@Experimental(Experimental.Kind.PORTABILITY)
 @AutoService(ExternalTransformRegistrar.class)
 public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegistrar {
     private static final String URN = "beam:external:java:schemaio:v1";
-    private static ImmutableMap<String, Class<? extends SchemaIOProvider>> IOPROVIDERS;
+    private static ImmutableMap<String, SchemaIOProvider> IOPROVIDERS;
 
     public ExternalSchemaIOTransformRegistrar() {
-        ImmutableMap.Builder builder = ImmutableMap.<String, Class<? extends SchemaIOProvider>>builder();
-        for (SchemaIOProvider schemaIOProvider : ServiceLoader.load(SchemaIOProvider.class)) {
-          //  builder = builder.put(schemaIOProvider.identifier() + ":reader", schemaIOProvider);
-          //  builder = builder.put(schemaIOProvider.identifier() + ":writer", schemaIOProvider);
-            builder = builder.put(schemaIOProvider.identifier(), schemaIOProvider);
-        }
-        IOPROVIDERS = builder.build();
+        ImmutableMap.Builder builder = ImmutableMap.<String, SchemaIOProvider>builder();
+            ServiceLoader<SchemaIOProvider> map = ServiceLoader.load(SchemaIOProvider.class);
+            for (SchemaIOProvider schemaIOProvider : map) {
+                builder = builder.put(schemaIOProvider.identifier(), schemaIOProvider);
+            }
+            IOPROVIDERS = builder.build();
     }
 
 
@@ -59,14 +68,16 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
     }
 
     @Override
-    public Map<String, ExternalTransformRegistrar> knownBuilderInstances() throws IllegalAccessException, InstantiationException {
+    public Map<String, ExternalTransformBuilder> knownBuilderInstances() {
         ImmutableMap.Builder builder = ImmutableMap.<String, ExternalTransformRegistrar>builder();
-        for(String id : IOPROVIDERS.keySet()) {
-           // String newURN = urn + ":reader";
-            ////Builder readBuild = new ReaderBuilder(IOPROVIDERS.get(urn));//need to add in writer too
-            builder.put(id + ":reader", new ReaderBuilder(IOPROVIDERS.get(id)));
-            builder.put(id + ":writer", new WriterBuilder(IOPROVIDERS.get(id)));
-        }
+            try {
+                for(String id : IOPROVIDERS.keySet()) {
+                    builder.put(id + ":reader", new ReaderBuilder(IOPROVIDERS.get(id)));
+                    builder.put(id + ":writer", new WriterBuilder(IOPROVIDERS.get(id)));
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e.getMessage());
+            }
         return builder.build();
     }
 
@@ -77,25 +88,29 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
 
         public void setLocation(String location) { this.location = location; }
 
-        public void setConfiguration(byte[] config) { this.config = config; }
+        public void setConfig(byte[] config) { this.config = config; }
 
         public void setDataSchema(byte[] dataSchema) { this.dataSchema = dataSchema; }
     }
 
-    private static Schema translateSchema(byte[] schemaBytes) throws InvalidProtocolBufferException {
+    private static Schema translateSchema(byte[] schemaBytes) throws Exception {
+        if(schemaBytes == null) {
+            return null;
+        }
         SchemaApi.Schema protoSchema = SchemaApi.Schema.parseFrom(schemaBytes);
         return SchemaTranslation.schemaFromProto(protoSchema);
     }
 
-    private static Row translateRow(byte[] rowBytes, Schema configSchema) throws InvalidProtocolBufferException{
-        SchemaApi.Row protoRow = SchemaApi.Row.parseFrom(rowBytes);
-        return (Row) SchemaTranslation.rowFromProto(protoRow, Schema.FieldType.row(configSchema));
+    private static Row translateRow(byte[] rowBytes, Schema configSchema) throws Exception{
+        RowCoder rowCoder = RowCoder.of(configSchema);
+        InputStream stream = new ByteArrayInputStream(rowBytes);
+        return rowCoder.decode(stream);
     }
 
     private static class ReaderBuilder implements ExternalTransformBuilder<Configuration, PBegin, PCollection<Row>>{
         SchemaIOProvider schemaIOProvider;
-        ReaderBuilder(Class<? extends SchemaIOProvider> schemaIOProvider) throws InstantiationException, IllegalAccessException {
-            this.schemaIOProvider = schemaIOProvider.newInstance();
+        ReaderBuilder(SchemaIOProvider schemaIOProvider) {
+            this.schemaIOProvider = schemaIOProvider;
         }
 
         @Override
@@ -103,9 +118,11 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
             try {
                 Schema dataSchema = translateSchema(configuration.dataSchema);
                 Row config = translateRow(configuration.config, schemaIOProvider.configurationSchema()); //need to pass in configSchema
-                return schemaIOProvider.from(configuration.location, config, dataSchema).buildReader();
+                SchemaIO schemaIO = schemaIOProvider.from(configuration.location, config, dataSchema);
+                PTransform<PBegin, PCollection<Row>> transform = schemaIO.buildReader();
+                return transform;
             }
-            catch (InvalidProtocolBufferException e) {
+            catch (Exception e) {
                 throw new RuntimeException("Could not convert configuration proto to row or schema.");
             }
         }
@@ -113,8 +130,8 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
 
     private static class WriterBuilder implements ExternalTransformBuilder<Configuration, PCollection<Row>, PDone> {
         SchemaIOProvider schemaIOProvider;
-        WriterBuilder(Class<? extends SchemaIOProvider>  schemaIOProvider) throws InstantiationException, IllegalAccessException {
-            this.schemaIOProvider = schemaIOProvider.newInstance();
+        WriterBuilder(SchemaIOProvider  schemaIOProvider) {
+            this.schemaIOProvider = schemaIOProvider;
         }
 
         @Override
@@ -125,7 +142,7 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
                 return (PTransform<PCollection<Row>, PDone>) schemaIOProvider
                         .from(configuration.location, config, dataSchema).buildWriter();
             }
-            catch (InvalidProtocolBufferException e) {
+            catch (Exception e) {
                 throw new RuntimeException("Could not convert configuration proto to row or schema.");
             }
         }

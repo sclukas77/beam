@@ -22,7 +22,6 @@ import java.util.Map;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.expansion.ExternalTransformRegistrar;
-import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.transforms.ExternalTransformBuilder;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -54,7 +53,7 @@ public class JdbcWriteRegistrar implements ExternalTransformRegistrar {
       implements ExternalTransformBuilder<WriteConfiguration, PCollection<Row>, PDone> {
     @Override
     public PTransform<PCollection<Row>, PDone> buildExternal(WriteConfiguration configuration) {
-      return (new JdbcSchemaIOProvider()).from(null,
+      return new JdbcSchemaIOProvider().from(null,
               new AutoValueSchema().toRowFunction(TypeDescriptor.of(WriteConfiguration.class)).apply(configuration),
               null)
               .buildWriter();

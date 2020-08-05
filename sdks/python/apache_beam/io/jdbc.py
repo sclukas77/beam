@@ -85,9 +85,11 @@ import typing
 
 from past.builtins import unicode
 
+from apache_beam.coders import RowCoder
 from apache_beam.transforms.external import BeamJarExpansionService
 from apache_beam.transforms.external import ExternalTransform
 from apache_beam.transforms.external import NamedTupleBasedPayloadBuilder
+from apache_beam.typehints.schemas import typing_to_runner_api
 
 __all__ = [
     'WriteToJdbc',
@@ -95,12 +97,14 @@ __all__ = [
 ]
 
 
+####do I still need shadowJar here?
 def default_io_expansion_service():
-  return BeamJarExpansionService('beam:external:java:schemaio:v1')
+    return BeamJarExpansionService(
+        ':sdks:java:extensions:schemaio-expansion-service:shadowJar')  # task in gradle. Not urn, comes from java package
 
 
-WriteToJdbcSchema = typing.NamedTuple(
-    'WriteToJdbcSchema',
+WriteConfig = typing.NamedTuple(
+    'Config',
     [
         ('driver_class_name', unicode),
         ('jdbc_url', unicode),
@@ -112,9 +116,17 @@ WriteToJdbcSchema = typing.NamedTuple(
     ],
 )
 
+WriteToJdbcSchema = typing.NamedTuple(
+    'WriteToJdbcSchema',
+    [
+        ('location', unicode),
+        ('config', bytes)
+    ],
+)
+
 
 class WriteToJdbc(ExternalTransform):
-  """A PTransform which writes Rows to the specified database via JDBC.
+    """A PTransform which writes Rows to the specified database via JDBC.
 
   This transform receives Rows defined as NamedTuple type and registered in
   the coders registry, e.g.::
@@ -139,20 +151,21 @@ class WriteToJdbc(ExternalTransform):
   Experimental; no backwards compatibility guarantees.
   """
 
-  URN = 'beam:external:java:jdbc:write:v1'
+    #URN = 'beam:external:java:jdbc:write:v1'  # my defined urn
+    URN = 'jdbc:writer'
 
-  def __init__(
-      self,
-      driver_class_name,
-      jdbc_url,
-      username,
-      password,
-      statement,
-      connection_properties=None,
-      connection_init_sqls=None,
-      expansion_service=None,
-  ):
-    """
+    def __init__(
+            self,
+            driver_class_name,
+            jdbc_url,
+            username,
+            password,
+            statement,
+            connection_properties=None,
+            connection_init_sqls=None,
+            expansion_service=None,
+    ):
+        """
     Initializes a write operation to Jdbc.
 
     :param driver_class_name: name of the jdbc driver class
@@ -168,41 +181,64 @@ class WriteToJdbc(ExternalTransform):
     :param expansion_service: The address (host:port) of the ExpansionService.
     """
 
-    super(WriteToJdbc, self).__init__(
-        self.URN,
-        NamedTupleBasedPayloadBuilder(
-            WriteToJdbcSchema(
-                driver_class_name=driver_class_name,
-                jdbc_url=jdbc_url,
-                username=username,
-                password=password,
-                statement=statement,
-                connection_properties=connection_properties,
-                connection_init_sqls=connection_init_sqls,
+        super(WriteToJdbc, self).__init__(
+            self.URN,
+            NamedTupleBasedPayloadBuilder(
+                WriteToJdbcSchema(
+                    location=jdbc_url,
+                    config=RowCoder(typing_to_runner_api(WriteConfig).row_type.schema).encode(
+                        WriteConfig(
+                            driver_class_name=driver_class_name,
+                            jdbc_url=jdbc_url,
+                            username=username,
+                            password=password,
+                            statement=statement,
+                            connection_properties=connection_properties,
+                            connection_init_sqls=connection_init_sqls,
+                        )
+                    )
+                ),
             ),
-        ),
-        expansion_service or default_io_expansion_service(),
-    )
+            expansion_service or default_io_expansion_service(),
+        )
 
 
-ReadFromJdbcSchema = typing.NamedTuple(
-    'ReadFromJdbcSchema',
+# should match with configuration on java side, most go in row configuration
+# maybe doesn't need a schema
+ReadConfig = typing.NamedTuple(
+    'Config',
     [
         ('driver_class_name', unicode),
-        ('jdbc_url', unicode),
+        ('jdbc_url', unicode),  # location
         ('username', unicode),
         ('password', unicode),
         ('connection_properties', typing.Optional[unicode]),
         ('connection_init_sqls', typing.Optional[typing.List[unicode]]),
         ('query', unicode),
         ('fetch_size', typing.Optional[int]),
-        ('output_parallelization', typing.Optional[bool]),
+        ('output_parallelization', typing.Optional[bool]), #int]),
+    ],
+)
+
+ReadFromJdbcSchema = typing.NamedTuple(
+    'ReadFromJdbcSchema',
+    [
+        ('location', unicode),
+        ('config', bytes),
     ],
 )
 
 
+# change package at top, URNs in write and read
+# another namedtuple for row.
+# in end, row one will look lik readfromjdbcschema currently
+# readfromjdbcschema will look like java configuration object (location, row config, ?dataschema?)
+# jdbc_url is location
+# do this for readfromjdbc too
+# row to bytes, schema to bytes as in example brian tagged in docs
+
 class ReadFromJdbc(ExternalTransform):
-  """A PTransform which reads Rows from the specified database via JDBC.
+    """A PTransform which reads Rows from the specified database via JDBC.
 
   This transform delivers Rows defined as NamedTuple registered in
   the coders registry, e.g.::
@@ -225,22 +261,23 @@ class ReadFromJdbc(ExternalTransform):
   Experimental; no backwards compatibility guarantees.
   """
 
-  URN = 'beam:external:java:jdbc:read_rows:v1'
+    #URN = 'beam:external:java:jdbc:read_rows:v1'
+    URN = 'jdbc:reader'
 
-  def __init__(
-      self,
-      driver_class_name,
-      jdbc_url,
-      username,
-      password,
-      query,
-      output_parallelization=None,
-      fetch_size=None,
-      connection_properties=None,
-      connection_init_sqls=None,
-      expansion_service=None,
-  ):
-    """
+    def __init__(
+            self,
+            driver_class_name,
+            jdbc_url,
+            username,
+            password,
+            query,
+            output_parallelization=None,
+            fetch_size=None,
+            connection_properties=None,
+            connection_init_sqls=None,
+            expansion_service=None,
+    ):
+        """
     Initializes a read operation from Jdbc.
 
     :param driver_class_name: name of the jdbc driver class
@@ -257,20 +294,24 @@ class ReadFromJdbc(ExternalTransform):
                                  passed as list of strings
     :param expansion_service: The address (host:port) of the ExpansionService.
     """
-    super(ReadFromJdbc, self).__init__(
-        self.URN,
-        NamedTupleBasedPayloadBuilder(
-            ReadFromJdbcSchema(
-                driver_class_name=driver_class_name,
-                jdbc_url=jdbc_url,
-                username=username,
-                password=password,
-                query=query,
-                output_parallelization=output_parallelization,
-                fetch_size=fetch_size,
-                connection_properties=connection_properties,
-                connection_init_sqls=connection_init_sqls,
+        super(ReadFromJdbc, self).__init__(
+            self.URN,
+            NamedTupleBasedPayloadBuilder(
+                ReadFromJdbcSchema(
+                    location=jdbc_url,
+                    config=RowCoder(typing_to_runner_api(ReadConfig).row_type.schema).encode(
+                        ReadConfig(driver_class_name=driver_class_name,
+                                   jdbc_url=jdbc_url,
+                                   username=username,
+                                   password=password,
+                                   query=query,
+                                   output_parallelization=output_parallelization,
+                                   fetch_size=fetch_size,
+                                   connection_properties=connection_properties,
+                                   connection_init_sqls=connection_init_sqls,
+                                   )
+                    )
+                ),
             ),
-        ),
-        expansion_service or default_io_expansion_service(),
-    )
+            expansion_service or default_io_expansion_service(),
+        )
