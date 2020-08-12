@@ -33,6 +33,7 @@ applyJavaNature(
 dependencies {
     compile project(path: ":sdks:java:expansion-service")
     compile project(":sdks:java:io:jdbc")
+    compile project(":sdks:java:io:google-cloud-platform")
     compile library.java.postgres
     testCompile library.java.junit
     testCompile library.java.powermock_mockito

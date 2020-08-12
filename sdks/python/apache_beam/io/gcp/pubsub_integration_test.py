@@ -25,6 +25,7 @@ from __future__ import absolute_import
 import logging
 import unittest
 import uuid
+import os
 
 from hamcrest.core.core.allof import all_of
 from nose.plugins.attrib import attr
@@ -48,6 +49,8 @@ TEST_PIPELINE_DURATION_MS = 3 * 60 * 1000
 # How long PubSubMessageMatcher will wait for the correct set of messages to
 # appear.
 MESSAGE_MATCHER_TIMEOUT_S = 5 * 60
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/usr/local/google/home/slukas/Documents/auth.json"
 
 
 class PubSubIntegrationTest(unittest.TestCase):

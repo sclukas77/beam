@@ -162,7 +162,7 @@ class JavaJarServer(SubprocessServer):
 
   def __init__(self, stub_class, path_to_jar, java_arguments):
     super(JavaJarServer, self).__init__(
-        stub_class, ['java', '-jar', path_to_jar] + list(java_arguments))
+        stub_class, ['java','-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=1044' ,'-jar', path_to_jar] + list(java_arguments))
     self._existing_service = path_to_jar if _is_service_endpoint(
         path_to_jar) else None
 
