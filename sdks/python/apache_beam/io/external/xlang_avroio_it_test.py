@@ -21,7 +21,134 @@
 
 ##import pubsub_matcher to compare expected and actual output
 
+from __future__ import absolute_import
+from __future__ import division
+
+import json
 import logging
+import typing
+import math
+import os
+import tempfile
+import unittest
+from builtins import range
+from typing import List
+import sys
+
+from past.builtins import unicode
+
+# patches unittest.TestCase to be python3 compatible
+import future.tests.base  # pylint: disable=unused-import
+import hamcrest as hc
+
+import avro
+import avro.datafile
+from avro.datafile import DataFileWriter
+from avro.io import DatumWriter
+from fastavro.schema import parse_schema
+from fastavro import writer
+
+try:
+  from avro.schema import Parse  # avro-python3 library for python3
+except ImportError:
+  from avro.schema import parse as Parse  # avro library for python2
+# pylint: enable=wrong-import-order, wrong-import-position, ungrouped-imports
+
+import apache_beam as beam
+from apache_beam import Create
+from apache_beam.io import avroio
+from apache_beam.io import filebasedsource
+from apache_beam.io import iobase
+from apache_beam.io import source_test_utils
+from apache_beam.io.avroio import _create_avro_sink  # For testing
+from apache_beam.io.avroio import _create_avro_source  # For testing
+from apache_beam.testing.test_pipeline import TestPipeline
+from apache_beam.testing.util import assert_that
+from apache_beam.testing.util import equal_to
+from apache_beam.transforms.display import DisplayData
+from apache_beam.transforms.display_test import DisplayDataItemMatcher
+
+from apache_beam.io.avro_schemaio import WriteToAvro
+
+# Import snappy optionally; some tests will be skipped when import fails.
+try:
+  import snappy  # pylint: disable=import-error
+except ImportError:
+  snappy = None  # pylint: disable=invalid-name
+  logging.warning('python-snappy is not installed; some tests will be skipped.')
+
+RECORDS = [{
+  'name': 'Thomas', 'favorite_number': 1, 'favorite_color': 'blue'
+}, {
+  'name': 'Henry', 'favorite_number': 3, 'favorite_color': 'green'
+}, {
+  'name': 'Toby', 'favorite_number': 7, 'favorite_color': 'brown'
+}, {
+  'name': 'Gordon', 'favorite_number': 4, 'favorite_color': 'blue'
+}, {
+  'name': 'Emily', 'favorite_number': -1, 'favorite_color': 'Red'
+}, {
+  'name': 'Percy', 'favorite_number': 6, 'favorite_color': 'Green'
+}]
+
+AvroWriteTestRow = typing.NamedTuple(
+    "AvroWriteTestRow",
+    [
+        ("name", unicode),
+        ("favorite_number", int),
+        ("favorite_color", unicode),
+    ],
+)
+
+AvroWriteTestRow2 = typing.NamedTuple(
+    "AvroWriteTestRow2",
+    [
+        ("f_id", int),
+        ("f_real", float),
+        ("f_string", unicode),
+    ],
+)
+
+class CrossLanguageAvroIOTest(unittest.TestCase):
+  def setUp(self):
+    # Reducing the size of thread pools. Without this test execution may fail in
+    # environments with limited amount of resources.
+    filebasedsource.MAX_NUM_THREADS_FOR_SIZE_ESTIMATION = 2
+
+  def tearDown(self):
+    pass
+    #for path in self._temp_files:
+     # if os.path.exists(path):
+      #  os.remove(path)
+    #self._temp_files = []
+
+  #def _write_data(self, directory, prefix, codec, count, sync_interval):
+   # raise NotImplementedError
+
+  def test_xlang_avro_write(self):
+    file_name = 'some_avro_sink'
+    inserted_rows = [
+        AvroWriteTestRow2(i, i + 0.1, 'Test{}'.format(i))
+        for i in range(10)
+    ]
+    with TestPipeline() as p:
+      p.not_use_test_runner_api = True
+      _ = (
+              p
+              | beam.Create(RECORDS)
+              | WriteToAvro(file_name, AvroWriteTestRow)
+      )
+
+    ssertEqual(RECORDS, RECORDS)
+
+
+
+
+if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.DEBUG)
+    unittest.main()
+
+'''import logging
 import unittest
 import uuid
 import typing
@@ -220,12 +347,8 @@ class PubSubSchemaIOIntegrationTest(unittest.TestCase):
         #pipeline_options.view_as(StandardOptions).streaming = True
         #p = beam.Pipeline(options=pipeline_options)
 
-        #_ =
+        #_ ='''
 
-
-if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.DEBUG)
-    unittest.main()
 
 
 

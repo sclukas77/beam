@@ -65,7 +65,7 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
 
   public static class Configuration {
     String location = "";
-    byte[] config = new byte[0];
+    @Nullable byte[] config = null;
     @Nullable byte[] dataSchema = null;
 
     public void setLocation(String location) {
@@ -95,7 +95,11 @@ public class ExternalSchemaIOTransformRegistrar implements ExternalTransformRegi
     }
   }
 
-  private static Row translateRow(byte[] rowBytes, Schema configSchema) {
+  private static Row translateRow(@Nullable byte[] rowBytes, Schema configSchema) {
+    if (rowBytes == null) {
+      return Row.withSchema(configSchema).build();
+    }
+
     RowCoder rowCoder = RowCoder.of(configSchema);
     InputStream stream = new ByteArrayInputStream(rowBytes);
 
