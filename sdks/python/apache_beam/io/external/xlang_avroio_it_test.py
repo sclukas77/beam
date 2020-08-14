@@ -67,6 +67,7 @@ from apache_beam.testing.util import assert_that
 from apache_beam.testing.util import equal_to
 from apache_beam.transforms.display import DisplayData
 from apache_beam.transforms.display_test import DisplayDataItemMatcher
+from apache_beam import coders
 
 from apache_beam.io.avro_schemaio import WriteToAvro
 
@@ -77,7 +78,7 @@ except ImportError:
   snappy = None  # pylint: disable=invalid-name
   logging.warning('python-snappy is not installed; some tests will be skipped.')
 
-RECORDS = [{
+'''RECORDS = [{
   'name': 'Thomas', 'favorite_number': 1, 'favorite_color': 'blue'
 }, {
   'name': 'Henry', 'favorite_number': 3, 'favorite_color': 'green'
@@ -89,7 +90,7 @@ RECORDS = [{
   'name': 'Emily', 'favorite_number': -1, 'favorite_color': 'Red'
 }, {
   'name': 'Percy', 'favorite_number': 6, 'favorite_color': 'Green'
-}]
+}] '''
 
 AvroWriteTestRow = typing.NamedTuple(
     "AvroWriteTestRow",
@@ -99,6 +100,13 @@ AvroWriteTestRow = typing.NamedTuple(
         ("favorite_color", unicode),
     ],
 )
+
+RECORDS = [
+    AvroWriteTestRow("Thomas", 1, "blue"),
+    AvroWriteTestRow("Henry", 3, "green")
+]
+
+coders.registry.register_coder(AvroWriteTestRow, coders.RowCoder)
 
 AvroWriteTestRow2 = typing.NamedTuple(
     "AvroWriteTestRow2",
@@ -127,19 +135,17 @@ class CrossLanguageAvroIOTest(unittest.TestCase):
 
   def test_xlang_avro_write(self):
     file_name = 'some_avro_sink'
-    inserted_rows = [
-        AvroWriteTestRow2(i, i + 0.1, 'Test{}'.format(i))
-        for i in range(10)
-    ]
+    print("going")
     with TestPipeline() as p:
       p.not_use_test_runner_api = True
       _ = (
               p
-              | beam.Create(RECORDS)
+              | beam.Create(RECORDS).with_output_types(AvroWriteTestRow)
               | WriteToAvro(file_name, AvroWriteTestRow)
       )
+    print("finishedddd")
 
-    ssertEqual(RECORDS, RECORDS)
+    #assertEqual(RECORDS, RECORDS)
 
 
 
@@ -147,6 +153,9 @@ class CrossLanguageAvroIOTest(unittest.TestCase):
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
     unittest.main()
+
+
+
 
 '''import logging
 import unittest
