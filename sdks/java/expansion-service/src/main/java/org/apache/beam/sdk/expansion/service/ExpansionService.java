@@ -78,6 +78,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+
 /** A service that allows pipeline expand transforms from a remote SDK. */
 public class ExpansionService extends ExpansionServiceGrpc.ExpansionServiceImplBase
     implements AutoCloseable {
@@ -503,6 +506,7 @@ public class ExpansionService extends ExpansionServiceGrpc.ExpansionServiceImplB
 
   public static void main(String[] args) throws Exception {
     int port = Integer.parseInt(args[0]);
+    FileSystems.setDefaultPipelineOptions(PipelineOptionsFactory.create());
     System.out.println("Starting expansion service at localhost:" + port);
     ExpansionService service = new ExpansionService();
     for (Map.Entry<String, TransformProvider> entry :
